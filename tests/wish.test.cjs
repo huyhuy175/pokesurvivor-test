@@ -301,3 +301,37 @@ test('wish ids follow the ledger rule for bag keys', () => {
   const r = G.DB.merge(a, b);
   assert.equal(r.bag.wishsure, 2);
 });
+
+// ---------------- interfaz (comprobaciones sobre el código fuente) ----------------
+
+test('dev.html has the guarantee tick box and the #wish-pick panel (hidden by default)', () => {
+  const html = source('dev.html');
+  assert.match(html, /id="wish-sure"[^>]*type="checkbox"|type="checkbox"[^>]*id="wish-sure"/);
+  assert.match(html, /Use Guarantee Ticket/);
+  assert.match(html, /id="wish-pick"[^>]*class="[^"]*hidden/);
+});
+
+test('gacha-ui passes { sure } only for the x10 ticket buttons, never for x100', () => {
+  const src = source('js/ui/gacha-ui.js');
+  assert.match(src, /\$\('pull-10'\)\.onclick = \(\) => pull\(10, 't1'\)/);
+  assert.match(src, /\$\('pull-10b'\)\.onclick = \(\) => pull\(10, 't10'\)/);
+  assert.match(src, /\$\('pull-100'\)\.onclick = \(\) => pull\(100, 't1'\)/);
+  assert.match(src, /\$\('pull-100b'\)\.onclick = \(\) => pull\(100, 't10'\)/);
+  assert.match(src, /const sure = n === 10 && wantSure\(\)/);
+  assert.match(src, /G\.Gacha\.pull\(G\.DB\.save, n, gen, use, \{ sure \}\)/);
+});
+
+test('gacha-ui commits right after startTypePick and after a successful claim', () => {
+  const src = source('js/ui/gacha-ui.js');
+  assert.match(src, /startTypePick\(s\)[\s\S]{0,300}G\.DB\.commit\(true\)/);
+  assert.match(src, /G\.Gacha\.claim\([\s\S]{0,400}G\.DB\.commit\(true\)/);
+  assert.match(src, /openPick/);
+});
+
+test('bag lists the three wish items with a Use button for wishtype and wishany', () => {
+  const src = source('js/ui/shop-ui.js');
+  assert.match(src, /WISH_IDS/);
+  assert.match(src, /data-wish=/);
+  assert.match(src, /G\.GachaUI\.openPick/);
+  assert.match(source('js/data/shop.js'), /const ORDER = \['mint'\];/);
+});

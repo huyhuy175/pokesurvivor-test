@@ -403,6 +403,15 @@ label { display: block; font-size: 14px; color: var(--muted); margin: 8px 0 4px;
   .pcard .stars { font-size: 11px; }
 }
 #pull-fx.hidden { display: none; }
+/* Selector de los vales Tipo / Libre. */
+#wish-pick {
+  position: fixed; inset: 0; z-index: 45; display: flex; flex-direction: column; align-items: center;
+  gap: 12px; padding: 14px 10px; overflow-y: auto; overscroll-behavior: contain; text-align: center;
+  background: radial-gradient(circle at 50% 45%, #1b2d63, #03060f 70%);
+}
+#wish-pick.hidden { display: none; }
+#wish-pick .pcard { cursor: pointer; font: inherit; color: inherit; }
+#wish-close { position: sticky; bottom: 8px; flex-shrink: 0; }
 .ball {
   width: 120px; height: 120px; border-radius: 50%; position: relative;
   background: linear-gradient(180deg, #ff4d4d 0 47%, #1a1a1a 47% 53%, #f4f4f4 53% 100%);

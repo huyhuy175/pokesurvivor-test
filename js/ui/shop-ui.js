@@ -8,6 +8,7 @@
 G.ShopUI = (() => {
   const $ = G.UI.$;
   const KECLEON = 352;
+  const WISH_IDS = ['wishsure', 'wishtype', 'wishany'];
 
   // =====================================================================
   //   El puesto, en pixel art (como en Mundo Misterioso), en un lienzo:
@@ -472,6 +473,9 @@ G.ShopUI = (() => {
     if (go) go.onclick = () => G.MenuUI.openDex();
     const shop = box.querySelector('[data-go-shop]');
     if (shop) shop.onclick = () => open();
+    box.querySelectorAll('[data-wish]').forEach(b => {
+      b.onclick = () => G.GachaUI.openPick(b.dataset.wish === 'wishtype' ? 'type' : 'any');
+    });
   }
 
   /** Lo que dice el Kecleon morado en el bocadillo (se va solo a los 6 s). */
@@ -579,7 +583,10 @@ G.ShopUI = (() => {
     const items = G.Shop.ORDER.filter(id => G.Shop.count(id) > 0);
     const mats = G.MegaMats.TYPES.filter(t => G.Shop.count(G.MegaMats.id(t)) > 0);
     const tms = Object.keys(s.tms || {}).filter(id => G.Moves.BY_ID[id] && s.tms[id] > 0).sort((a, b) => moveName(a).localeCompare(moveName(b)));
-    if (!items.length && !tms.length && !mats.length) {
+    // Vales wish (no se compran): con "Use" los de elección; el de garantía se usa en el gacha.
+    // Un sorteo de tipo a medias (pendingType) se puede retomar aunque ya no quede vale.
+    const wishes = WISH_IDS.filter(id => G.Shop.count(id) > 0 || (id === 'wishtype' && s.pendingType));
+    if (!items.length && !tms.length && !mats.length && !wishes.length) {
       return `<p class="sub center" style="margin:24px 0">${G.T('Tu Mochila está vacía.')}<br><br>
             <button class="btn gold" data-go-shop>${G.Icons.html('shop', 16)} ${G.T('Ir a la Tienda Kecleon')}</button></p>` + irisHtml();
     }
@@ -588,6 +595,13 @@ G.ShopUI = (() => {
     for (const id of items) {
       const it = G.Shop.ITEMS[id];
       h += row(G.Icons.html(it.icon, 32), G.T(it.name), G.T(it.desc), `<b class="gold">×${G.Shop.count(id)}</b>`);
+    }
+    for (const id of wishes) {
+      const it = G.Shop.ITEMS[id], n = G.Shop.count(id);
+      const use = id === 'wishsure'
+        ? `<small class="sub">${G.T('Tick it in the Gacha')}</small>`
+        : `<button class="btn small gold" data-wish="${id}">${id === 'wishtype' && s.pendingType && !n ? G.T('Resume') : G.T('Use')}</button>`;
+      h += row(G.Icons.html(it.icon, 32), G.T(it.name), G.T(it.desc), `<b class="gold">×${n}</b> ${use}`);
     }
     for (const t of mats) {
       h += row(G.MegaMats.dot(t, 28), G.MegaMats.name(t), G.Shop.ITEMS[G.MegaMats.id(t)].desc, `<b class="gold">×${G.Shop.count(G.MegaMats.id(t))}</b>`);

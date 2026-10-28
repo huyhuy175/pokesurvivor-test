@@ -223,7 +223,7 @@ G.Gacha = (() => {
     return x < 0.80 ? 'wishsure' : x < 0.95 ? 'wishtype' : 'wishany';
   }
 
-  return { debugForceShiny(n = 1) { forceShiny = n; }, missing, startTypePick, claim, rollWish,
+  return { debugForceShiny(n = 1) { forceShiny = n; }, missing, missingIn, startTypePick, claim, rollWish,
            costOf, RATES, PITY_5, SHINY_RATE, SHINY_RATE_IRIS, REFUND, RARITY_NAME, RARITY_COLOR, BANNERS,
            pool, featured, pull, dexOf, hasIris, shinyRate };
 })();

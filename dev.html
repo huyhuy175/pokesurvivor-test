@@ -550,6 +550,10 @@
           <button id="pull-100" class="btn gold grow" data-sfx="none">Tirar ×100 · <span id="cost-100"></span></button>
           <button id="pull-100b" class="btn gold grow" data-sfx="none">Tirar ×100 · <span id="cost-100b"></span></button>
         </div>
+        <label class="note" style="display:flex;align-items:center;gap:8px;margin-top:8px">
+          <input type="checkbox" id="wish-sure" disabled>
+          <span>Use Guarantee Ticket <b class="gold" id="wish-sure-n"></b> <small>(×10 only: the last pull is a Pokémon you don't have)</small></span>
+        </label>
         <p class="note tickets-line" id="gacha-tickets"></p>
         <p class="note" id="gacha-pity"></p>
       </div>
@@ -563,6 +567,13 @@
   <div class="pull-results" id="pull-results"></div>
   <button id="pull-skip" class="btn small ghost hidden">Saltar</button>
   <button id="pull-close" class="btn gold hidden">Continuar</button>
+</div>
+
+<div id="wish-pick" class="hidden">
+  <h2 id="wish-pick-title"></h2>
+  <p class="sub" id="wish-pick-sub"></p>
+  <div class="pull-results" id="wish-pick-list"></div>
+  <button id="wish-close" class="btn gold">Close</button>
 </div>
 
 <!-- ====== Durante la run ====== -->

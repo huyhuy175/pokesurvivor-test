@@ -12,6 +12,7 @@ G.GachaUI = (() => {
     $('pull-100').onclick = () => pull(100, 't1');
     $('pull-100b').onclick = () => pull(100, 't10');
     $('pull-close').onclick = close;
+    $('wish-close').onclick = closePick;
     // Saltar: se acaba la tragaperras y salen todas las cartas de golpe (también con Esc).
     $('pull-skip').onclick = skipNow;
     addEventListener('keydown', e => { if (e.key === 'Escape' && busy && !$('pull-fx').classList.contains('hidden')) skipNow(); });
@@ -82,17 +83,27 @@ G.GachaUI = (() => {
     $('pull-10b').disabled = !G.Gacha.costOf(s, 10, 't10');
     $('pull-100').disabled = !G.Gacha.costOf(s, 100, 't1');
     $('pull-100b').disabled = !G.Gacha.costOf(s, 100, 't10');
+    // Vale de garantía: sólo con vale y con algo por conseguir en este banner.
+    const ws = $('wish-sure'), canSure = G.Shop.count('wishsure') > 0 && G.Gacha.missingIn(s, gen).length > 0;
+    ws.disabled = !canSure;
+    if (!canSure) ws.checked = false;
+    $('wish-sure-n').textContent = `×${G.Shop.count('wishsure')}`;
     G.UI.refreshCoins();
   }
+
+  /** ¿Va la ×10 con vale de garantía? (la ×100 nunca) */
+  const wantSure = () => $('wish-sure').checked && !$('wish-sure').disabled;
 
   const wait = ms => new Promise(r => setTimeout(r, ms));
 
   async function pull(n, use = 't1') {
     if (busy) return;
-    const res = G.Gacha.pull(G.DB.save, n, gen, use);
+    const sure = n === 10 && wantSure();
+    const res = G.Gacha.pull(G.DB.save, n, gen, use, { sure });
     if (!res) { G.Audio.sfx('error'); G.UI.toast('No tienes tickets suficientes: consíguelos jugando'); return; }
     G.Progress.checkAch();
     G.DB.commit(true);
+    if (sure) $('wish-sure').checked = false;   // el vale se ha gastado (refresh lo vuelve a habilitar si quedan)
     busy = true; skip = false;
 
     const best = Math.max(...res.map(r => r.rarity));
@@ -170,5 +181,87 @@ G.GachaUI = (() => {
     refresh();
   }
 
-  return { init, open, get open_() { return !$('pull-fx').classList.contains('hidden'); } };
+  // ---------------- vales de elección (Tipo / Libre) ----------------
+
+  let pickKind = null;
+
+  /** Abre el selector: 'type' (sortea el tipo y gasta el vale) o 'any' (cualquier Pokémon que falte). */
+  function openPick(kind) {
+    const s = G.DB.save;
+    if (kind === 'type') {
+      const r = G.Gacha.startTypePick(s);
+      if (!r.ok) {
+        G.Audio.sfx('error');
+        G.UI.toast(r.reason === 'none' ? 'You already have every Pokémon: nothing to pick' : 'You have no Type Pick Ticket');
+        return;
+      }
+      G.DB.commit(true);   // el tipo sorteado y el vale gastado no se pueden perder al cerrar el juego
+    } else if (kind === 'any') {
+      if (!G.Shop.count('wishany')) { G.Audio.sfx('error'); G.UI.toast('You have no Free Pick Ticket'); return; }
+      if (!G.Gacha.missing(s).length) { G.Audio.sfx('error'); G.UI.toast('You already have every Pokémon: nothing to pick'); return; }
+    } else return;
+    pickKind = kind;
+    renderPick();
+    $('wish-pick').classList.remove('hidden');
+  }
+
+  function renderPick() {
+    const s = G.DB.save, box = $('wish-pick-list');
+    const list = pickKind === 'type' ? G.Gacha.missing(s, s.pendingType) : G.Gacha.missing(s);
+    $('wish-pick-title').innerHTML = pickKind === 'type'
+      ? `Type Pick: <span class="tag-chip" style="background:${G.U.TYPE_COLOR[s.pendingType]}">${G.U.TYPE_NAME[s.pendingType]}</span>`
+      : 'Free Pick';
+    $('wish-pick-sub').textContent = 'Choose the Pokémon you want. It will be yours for free.';
+    box.innerHTML = '';
+    $('wish-close').classList.remove('hidden');
+    for (const dex of list) {
+      const mon = G.DEX_BY[dex];
+      const c = document.createElement('button');
+      c.className = 'pcard r' + mon.rarity;
+      c.style.setProperty('--rc', G.Gacha.RARITY_COLOR[mon.rarity]);
+      c.dataset.dex = dex;
+      c.innerHTML = `<div class="stars">${G.UI.stars(mon.rarity, 16)}</div>`;
+      c.appendChild(G.UI.spriteCanvas(dex, 96, 90, { scale: 2 }));
+      c.insertAdjacentHTML('beforeend', `<b>${mon.name}</b>`);
+      c.onclick = () => choose(dex);
+      box.appendChild(c);
+    }
+  }
+
+  function choose(dex) {
+    const s = G.DB.save, r = G.Gacha.claim(s, pickKind, dex);
+    if (!r.ok) {
+      G.Audio.sfx('error');
+      G.UI.toast(r.reason === 'owned' ? 'You already have that Pokémon' : r.reason === 'item' ? 'You have no ticket' : 'That Pokémon cannot be picked');
+      renderPick();
+      return;
+    }
+    G.DB.commit(true);   // el vale ya está gastado: se guarda ya para que no se repita la elección gratis
+    G.Progress.checkAch();
+    G.Audio.sfx('shinyGet');
+    // La misma tarjeta de "¡NUEVO!" que el gacha.
+    const mon = G.DEX_BY[dex], ab = G.Mons.abilityOf(dex);
+    const c = document.createElement('div');
+    c.className = 'pcard r' + mon.rarity;
+    c.style.setProperty('--rc', G.Gacha.RARITY_COLOR[mon.rarity]);
+    c.innerHTML = `<div class="stars">${G.UI.stars(mon.rarity, 24)}</div>`;
+    c.appendChild(G.UI.spriteCanvas(dex, 132, 120, { lively: mon.rarity >= 4, scale: 2 }));
+    const who = ab ? `<div class="pmon" translate="no">${G.Mons.name(G.Mons.natureOf(dex).n)} · <span>${ab.name}</span></div>` : '';
+    c.insertAdjacentHTML('beforeend', `<b>${mon.name}</b>${who}<div class="tag"><span class="new">¡NUEVO!</span></div>`);
+    const box = $('wish-pick-list');
+    box.innerHTML = '';
+    box.appendChild(c);
+    $('wish-pick-title').textContent = 'Congratulations!';
+    $('wish-pick-sub').textContent = '';
+    pickKind = null;
+  }
+
+  function closePick() {
+    $('wish-pick').classList.add('hidden');
+    pickKind = null;
+    if (G.UI.isOpen('scr-gacha')) refresh();
+    if (G.UI.isOpen('scr-bag')) G.ShopUI.openBag();
+  }
+
+  return { init, open, openPick, get open_() { return !$('pull-fx').classList.contains('hidden'); } };
 })();
