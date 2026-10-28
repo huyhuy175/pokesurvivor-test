@@ -62,6 +62,8 @@ JSON trust model.
   (Not `ev`: that name already carries `G.Events` messages.)
   The receiver validates that `dex` is an integer present in the Pokédex and swaps the player's look (`Player.setLook`)
   once the new sprite sheets are loaded. Stats and passives are not synchronised: every machine runs its own player.
+- Apex signature moves (2026-10-28, `js/data/apex-moves.js`) add **no** message: the host builds them only from the existing `hz` hazards
+  (`G.Hazards.add`) and enemy shots (`enemyShot`), so guests see them like any other boss attack. The move-name banner goes through the existing `say` message (`Spawner.say`), so guests see it too.
 
 ## Reproducible measurement
 

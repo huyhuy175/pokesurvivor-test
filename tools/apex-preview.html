@@ -1,0 +1,143 @@
+<!doctype html>
+<!-- Vista previa de las habilidades de los Apex (solo para desarrollo; build.js no la incluye).
+     Abre este archivo desde la raíz del repo (tools/apex-preview.html): carga los mismos hazards.js y apex-moves.js que el juego.
+     Muestra la arena desde arriba: el aviso se va llenando y estalla; el panel dice cuánto de la arena queda libre en el siguiente
+     grupo de explosiones y cuántos avisos se pisan (los límites que vigila tests/apex-moves.test.cjs). -->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Apex moves preview</title>
+<style>
+  body { background: #1b1b24; color: #e8e8f0; font: 13px/1.35 system-ui, sans-serif; margin: 0; padding: 12px 16px; }
+  .bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  canvas { background: #2c3a26; border-radius: 8px; display: block; }
+  #info { margin: 8px 0; min-height: 3.2em; }
+  button, select { font: inherit; }
+  .ok { color: #7fe39a; } .bad { color: #ff7a7a; }
+</style>
+</head>
+<body>
+<h1 style="font-size:18px;margin:4px 0 8px">Apex — habilidades por tipo</h1>
+<div class="bar">
+  <label>tipo <select id="type"></select></label>
+  <label>jugadores <select id="players"><option>1</option><option>2</option><option selected>4</option></select></label>
+  <label><input type="checkbox" id="fury"> furia (Overdrive: eco a los 1,2 s)</label>
+  <button id="cast">Lanzar</button>
+  <label><input type="checkbox" id="loop" checked> repetir</label>
+</div>
+<div id="info"></div>
+<canvas id="cv" width="700" height="700"></canvas>
+
+<script>
+// Mínimo de G para hazards.js y apex-moves.js (en el juego lo ponen util.js, coop.js, game.js...).
+window.G = window.G || {};
+const ARENA = { x: 0, y: 0, r: 307 };
+G.U = {
+  hash(a, b, c) { let h = (Math.imul(a | 0, 374761393) ^ Math.imul(b | 0, 668265263) ^ Math.imul(c | 0, 2147483647)) >>> 0; h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; },
+  rand: (a, b) => a + Math.random() * (b - a), pick: a => a[Math.floor(Math.random() * a.length)],
+  dist2: (a, b, c, d) => (a - c) ** 2 + (b - d) ** 2, clamp: (v, a, b) => Math.min(b, Math.max(a, v)),
+  TYPE_COLOR: { normal: '#c4bcb0', fire: '#ff6a1f', water: '#3d8bff', grass: '#45b23c', electric: '#ffd21a', psychic: '#ff4f9a', ice: '#62d2ea',
+    fighting: '#e04a2e', poison: '#a043d0', ground: '#aa7c3c', flying: '#93b2ff', bug: '#90b82a', rock: '#8e7a5a', ghost: '#5c48aa',
+    dragon: '#5a3cff', dark: '#463840', steel: '#8c9caf', fairy: '#ff8acb' }
+};
+const PLAYERS = [];
+G.Coop = { active: false, isHost: false, broadcast() {}, enemyShot() {} };
+G.Game = { player: { x: 9999, y: 9999, r: 10, dead: false, invuln: 0, maxHp: 500, hurt() {} }, everyone: () => PLAYERS };
+G.FX = { ring() {}, burst() {}, beam() {}, sp() {} };
+G.Camera = { sees: () => false, kick() {} };
+G.Audio = { sfx() {} };
+G.VFX = { forType: () => ({}) };
+G.Spawner = { say(t) { document.getElementById('info').dataset.say = t; } };
+G.Rift = { arenaInfo: () => ARENA };
+</script>
+<script src="../js/systems/hazards.js"></script>
+<script src="../js/data/apex-moves.js"></script>
+<script>
+const $ = id => document.getElementById(id), cv = $('cv'), ctx = cv.getContext('2d');
+const A = G.ApexMoves, TYPES = Object.keys(A.MOVES);
+for (const t of TYPES) $('type').add(new Option(`${t} — ${A.MOVES[t].name}`, t));
+
+const boss = { x: 0, y: 0, r: 14, name: 'Apex', atkType: 'fire', cat: 'special', types: ['fire'], dead: false, shotDmg: () => 60, ai: { fury: false },
+  shoot() {}, anim: { play() {} } };
+let clock = 0, echoAt = null, cast = null, sinceEnd = 0;
+const boom = [];                               // explosiones recientes para dibujarlas un momento
+
+function layout(n) {
+  PLAYERS.length = 0;
+  for (let i = 0; i < n; i++) {
+    const a = 0.5 + i * Math.PI * 2 / n + Math.random() * 0.3;
+    PLAYERS.push({ x: Math.cos(a) * 130, y: Math.sin(a) * 130, r: 10, dead: false });
+  }
+}
+
+function start() {
+  G.Hazards.clear(); boom.length = 0; clock = 0; sinceEnd = 0;
+  const type = $('type').value;
+  boss.types = [type]; boss.atkType = type; boss.ai.fury = $('fury').checked;
+  layout(+$('players').value);
+  cast = {};
+  A.start(boss, PLAYERS[0], cast);
+  echoAt = boss.ai.fury ? cast.wind + A.LIMITS.ECHO.delay : null;
+}
+
+function stats() {
+  // Siguiente grupo de explosiones (avisos que estallan casi a la vez) sobre una rejilla de la arena.
+  const pend = G.Hazards.all.filter(h => !h.hit).sort((a, b) => (a.delay - a.t) - (b.delay - b.t));
+  if (!pend.length) return null;
+  const t0 = pend[0].delay - pend[0].t, grp = pend.filter(h => (h.delay - h.t) - t0 < 0.25);
+  let tot = 0, cov = 0, depth = 0;
+  for (let y = -ARENA.r; y <= ARENA.r; y += 10) for (let x = -ARENA.r; x <= ARENA.r; x += 10) {
+    if (x * x + y * y > ARENA.r ** 2) continue;
+    tot++;
+    const d = grp.reduce((n, h) => n + (G.Hazards.inside(h, x, y, 12) ? 1 : 0), 0);
+    if (d) cov++; if (d > depth) depth = d;
+  }
+  return { n: grp.length, safe: 1 - cov / tot, depth, in: t0 };
+}
+
+function draw() {
+  ctx.clearRect(0, 0, 700, 700);
+  ctx.save(); ctx.translate(350, 350);
+  ctx.strokeStyle = '#8f8'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, ARENA.r, 0, 6.2832); ctx.stroke();
+  for (const h of G.Hazards.all) {
+    const k = Math.min(1, h.t / h.delay), hot = h.hit;
+    ctx.save();
+    ctx.globalAlpha = hot ? Math.max(0, 0.7 - (h.t - h.delay) * 2.2) : 0.18 + 0.3 * k;
+    ctx.fillStyle = hot ? '#fff' : h.color;
+    ctx.strokeStyle = h.color; ctx.lineWidth = 2;
+    if (h.kind === 'zone') {
+      ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, 6.2832); ctx.fill(); ctx.stroke();
+      if (!hot) { ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.arc(h.x, h.y, h.r * k, 0, 6.2832); ctx.fill(); }
+    } else {
+      ctx.translate(h.x, h.y); ctx.rotate(h.angle);
+      ctx.fillRect(0, -h.w / 2, h.len, h.w); ctx.strokeRect(0, -h.w / 2, h.len, h.w);
+      if (!hot) { ctx.globalAlpha = 0.5; ctx.fillRect(0, -h.w / 2 * k, h.len, h.w * k); }
+    }
+    ctx.restore();
+  }
+  ctx.fillStyle = '#f66'; ctx.beginPath(); ctx.arc(0, 0, boss.r, 0, 6.2832); ctx.fill();
+  PLAYERS.forEach((p, i) => { ctx.fillStyle = '#6cf'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.2832); ctx.fill(); ctx.fillStyle = '#000'; ctx.fillText(i + 1, p.x - 3, p.y + 4); });
+  ctx.restore();
+}
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  clock += dt;
+  if (cast && echoAt != null && clock >= echoAt) { A.echo(boss, PLAYERS[0], cast); echoAt = null; }
+  G.Hazards.update(dt);
+  const s = stats();
+  const lim = A.LIMITS;
+  $('info').innerHTML = cast ? `<b>${cast.sig ? cast.sig.name : '—'}</b> · t = ${clock.toFixed(1)} s · avisos: ${G.Hazards.count}`
+    + (s ? ` · próximo grupo en ${s.in.toFixed(2)} s: ${s.n} avisos, libre <span class="${s.safe >= lim.MIN_SAFE ? 'ok' : 'bad'}">${(s.safe * 100).toFixed(0)}%</span> (mín ${lim.MIN_SAFE * 100}%), solape <span class="${s.depth <= lim.MAX_OVERLAP ? 'ok' : 'bad'}">${s.depth}</span> (máx ${lim.MAX_OVERLAP})` : '') : '';
+  if (cast && !G.Hazards.count && echoAt == null) { sinceEnd += dt; if (sinceEnd > 1 && $('loop').checked) start(); } else sinceEnd = 0;
+  draw();
+  requestAnimationFrame(frame);
+}
+$('cast').onclick = start;
+$('type').onchange = $('fury').onchange = $('players').onchange = start;
+start();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

@@ -294,3 +294,17 @@ test('a normal arena win is unchanged: bond, no wish ticket', () => {
   assert.deepEqual(w.calls.give, []);
   assert.equal(w.pl.wishFound, undefined);
 });
+
+test('arenaInfo is null outside the arena and gives the centre and the playable radius inside', () => {
+  const w = world({ coop: { active: true, isHost: true } });
+  assert.equal(w.R.arenaInfo(), null);
+  w.R.update(1, w.pl, 1500);
+  w.pl.x = w.R.rift.x; w.pl.y = w.R.rift.y - 10;
+  w.R.update(1, w.pl, 1501);
+  assert.ok(w.R.arena);
+  const a = w.R.arenaInfo();
+  assert.equal(a.x, w.R.arena.x);
+  assert.equal(a.y, w.R.arena.y);
+  const ts = w.G.Tiles.T * w.G.Sprites.PX;                 // 16 × 3 en este mundo de pruebas
+  assert.equal(a.r, (w.R.arena.r - 1.4) * ts);
+});

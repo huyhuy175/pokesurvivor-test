@@ -485,6 +485,16 @@
       const far = this.behavior === 'ranged';
       this.ai = { melee, ranged, farLike: far ? 0.65 : 0.35, mode: far ? 'far' : 'close', modeT: G.U.rand(6, 8),
                   cd: 1.6, cast: null, fury: false, side: Math.random() < 0.5 ? -1 : 1 };
+      // El Apex (rift especial) añade la habilidad propia de su tipo: data/apex-moves.js.
+      const sig = this.apex && G.ApexMoves ? G.ApexMoves.of(this.types) : null;
+      if (sig) { this.ai.sig = sig; this.ai.ranged = [...ranged, 'sig']; }
+    }
+
+    /** Qué habilidad de lejos usa. Con la furia (Overdrive) el Apex saca la suya la mitad de las veces. */
+    pickRanged() {
+      const ai = this.ai;
+      if (!ai.sig || !ai.fury) return G.U.pick(ai.ranged);
+      return Math.random() < 0.5 ? 'sig' : G.U.pick(ai.ranged.filter(x => x !== 'sig'));
     }
 
     bossMove(dt, pl, dist, dx, dy, spd) {
@@ -511,9 +521,9 @@
         if (ai.mode === 'close') {
           const ok = ai.melee.filter(m => m === 'slam' ? dist < 125 : dist < 320);
           // De vez en cuando, aunque esté cerca, también dispara.
-          id = ok.length && Math.random() < 0.8 ? G.U.pick(ok) : dist < 480 ? G.U.pick(ai.ranged) : null;
+          id = ok.length && Math.random() < 0.8 ? G.U.pick(ok) : dist < 480 ? this.pickRanged() : null;
         } else {
-          id = dist < 115 ? 'slam' : dist < 430 ? G.U.pick(ai.ranged) : null;
+          id = dist < 115 ? 'slam' : dist < 430 ? this.pickRanged() : null;
         }
         if (id) this.bossStart(id, pl);
       }
@@ -571,6 +581,10 @@
           c.wind = 1.0; c.after = 0.25; this.anim.play('Charge', { speed: 1.1 });
           break;
         }
+        case 'sig':        // habilidad del Apex: sus avisos llevan su propio retraso (data/apex-moves.js)
+          G.ApexMoves.start(this, pl, c);
+          this.anim.play('Charge', { speed: 1.2 });
+          break;
         case 'volley':     // abanico de disparos
         case 'nova':       // anillo de disparos
           c.wind = (id === 'nova' ? 0.7 : 0.5) * f;
@@ -595,16 +609,25 @@
         if (c.id === 'volley') this.shoot(ax, ay, 1.1, ai.fury ? 9 : 7, 0.8);
         else if (c.id === 'nova') { const n = ai.fury ? 18 : 14; this.shoot(ax, ay, 6.2832 * (n - 1) / n, n, 0.7); }
         else if (c.id === 'slam') this.anim.play('Attack', { speed: 1.4 });
+        else if (c.id === 'sig' && c.shot) this.shoot(ax, ay, c.shot.spread, c.shot.n, c.shot.k);
+      }
+      if (c.id === 'sig') {
+        // Overdrive: con la furia, la habilidad se repite una vez, más débil, tras ECHO.delay (aunque la furia llegue a mitad).
+        const E = G.ApexMoves.LIMITS.ECHO;
+        if (c.fired && ai.fury && c.echoAt == null) { c.echoAt = c.t + E.delay; c.after = Math.max(c.after, c.echoAt - c.wind + 0.3); }
+        if (c.echoAt != null && c.t >= c.echoAt) { G.ApexMoves.echo(this, pl, c); c.echoAt = Infinity; }
       }
       if (c.t >= c.wind + c.after) return this.bossEnd();
       return [0, 0, 'Idle'];
     }
 
     bossEnd() {
-      const ai = this.ai;
+      const ai = this.ai, c = ai.cast;
       ai.cast = null;
       ai.cd = G.U.rand(1.3, 2.0);
       if (ai.fury && Math.random() < 0.35) ai.cd = 0.3;    // encadena otro
+      // Los avisos de la habilidad del Apex siguen estallando después de la tirada: no se empieza otro ataque encima.
+      if (c && c.span != null) ai.cd = Math.max(ai.cd, c.span - c.t + 0.2);
       return [0, 0, 'Idle'];
     }
 
