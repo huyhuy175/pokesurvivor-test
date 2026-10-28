@@ -3,10 +3,13 @@
  * de juego y fallos arreglados (nada de servidores ni bases de datos).
  * La fecha más nueva, arriba. En cada fecha, por apartados:
  *   new  lo nuevo · chg  cambios y ajustes · fix  fallos arreglados
- * Cada línea en español y en inglés.
+ * Cada línea en español y en inglés. Una línea con un tercer valor 'en-only' se queda sólo en inglés
+ * (sin traducir a fr/it/pt/zh); las novedades ya enseñan el inglés cuando falta la traducción.
  */
 G.CHANGELOG = [
   { d: '2026-10-28', title: ['Forja Evolutiva y Fragmentos Evolutivos', 'Evolution Forge and Evolution Shards'], new: [
+    ["Megaevoluciones: ya hay 94 formas Mega. Los jefes y los cofres grandes sueltan Cristales Mega de un tipo (las misiones semanales también); en la pestaña Mega de la Forja, con Cristales y Fragmentos, desbloqueas la Mega de un Pokémon final que ya tengas. En la partida, a nivel 36 y con una Piedra Mega (cae de jefes y cofres), te transformas: stats de la Mega más +15 % de daño, +20 % de vida, +8 % de velocidad y +10 % de crítico. Sin sprite propio, la Mega usa el de su forma base con un aura rosa.",
+     "Mega Evolution: there are now 94 Mega forms. Bosses and big chests drop Mega Crystals of one type (weekly missions too); in the Mega tab of the Forge, with Crystals and Shards, you unlock the Mega of a fully evolved Pokémon you own. In a run, at level 36 and holding a Mega Stone (dropped by bosses and chests), you transform: the Mega's stats plus +15% damage, +20% health, +8% speed and +10% crit chance. With no sprite of its own, a Mega uses its base form's sprite with a pink aura.", 'en-only'],
     ["Nueva Forja Evolutiva (botón en el menú): gasta Fragmentos Evolutivos para desbloquear la forma evolucionada de los Pokémon que ya tienes (de 20 a 300 fragmentos según su rareza). Esas formas son la meta de la evolución durante la partida. Los fragmentos caen de los jefes (3) y los cofres grandes (1), y se ganan con misiones y logros.",
      "New Evolution Forge (menu button): spend Evolution Shards to unlock the evolved form of the Pokémon you already have (20 to 300 shards depending on rarity). Those forms are the target of evolution during a run. Shards drop from bosses (3) and big chests (1), and are earned from missions and achievements."],
     ["En la ficha de una forma evolucionada ahora se ve de qué Pokémon viene (su línea evolutiva): pulsa en un nombre para ir a su ficha y elegirlo de compañero.",

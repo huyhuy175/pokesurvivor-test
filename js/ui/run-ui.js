@@ -135,6 +135,7 @@ G.RunUI = (() => {
         <b class="gold"><span class="coin"></span> +${r.coins}</b>
         <div style="font-size:12px;color:var(--muted)">${r.breakdown}</div></div>
       ${r.shards ? `<div style="grid-column:1/-1"><span>Fragmentos Evolutivos</span><b>${G.Icons.html('shard', 22)} +${r.shards}</b></div>` : ''}
+      ${r.crystals ? `<div style="grid-column:1/-1"><span>Mega Crystals</span><b>+${r.crystals}</b></div>` : ''}
       ${r.t1 || r.t10 ? `<div style="grid-column:1/-1"><span>Tickets del gacha</span><b>
         ${r.t1 ? G.Icons.html('ticket', 22) + ' +' + r.t1 + ' ' : ''}${r.t10 ? G.Icons.html('ticket10', 22) + ' +' + r.t10 + ' ×10' : ''}</b></div>` : ''}
       <div style="grid-column:1/-1"><span>Movimientos</span><b style="font-size:15px">

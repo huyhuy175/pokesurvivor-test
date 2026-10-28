@@ -7,7 +7,7 @@
  * Además hay un logro por CADA legendario: vencerle en una grieta.
  */
 G.AchDefs = (() => {
-  const own = s => Object.keys(s.owned || {}).filter(d => G.DEX_BY[d]).length;
+  const own = s => Object.keys(s.owned || {}).filter(d => G.DEX_BY[d] && !(G.isMega && G.isMega(+d))).length;
   const shinies = s => Object.keys(s.shiny || {}).length;
   const legends = s => Object.keys(s.legends || {}).length;
   const st = k => s => (s.stats && s.stats[k]) || 0;

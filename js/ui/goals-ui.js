@@ -196,7 +196,7 @@
       const fill = q => {
         const g = $('fav-grid');
         g.innerHTML = '';
-        const mons = Object.keys(s.owned).map(Number).filter(d => G.DEX_BY[d] && (!q || (G.DEX_BY[d].name.toLowerCase().includes(q) || G.T(G.DEX_BY[d].name).toLowerCase().includes(q))));
+        const mons = Object.keys(s.owned).map(Number).filter(d => G.DEX_BY[d] && !G.isMega(d) && (!q || (G.DEX_BY[d].name.toLowerCase().includes(q) || G.T(G.DEX_BY[d].name).toLowerCase().includes(q))));
         for (const d of mons.slice(0, 120)) {
           for (const shiny of G.DB.ownsShiny(d) ? [false, true] : [false]) {
             const c = document.createElement('div');

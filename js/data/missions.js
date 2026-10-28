@@ -54,6 +54,8 @@ G.MissionDefs = (() => {
   // Fragmentos Evolutivos (Forja Evolutiva): 2 por misión diaria, 8 por semanal.
   for (const m of daily) m.reward.shards = 2;
   for (const m of weekly) m.reward.shards = 8;
+  // Cristales Mega (systems/mega.js): 2 por misión semanal, del primer tipo del compañero (systems/progress.js, claim).
+  for (const m of weekly) m.reward.megaCry = 2;
 
   const BY = {};
   for (const m of daily.concat(weekly)) BY[m.id] = m;

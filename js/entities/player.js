@@ -65,6 +65,9 @@ G.Player = class Player {
     this.executeDmg = 1;                     // × al daño a enemigos con menos del 30 % de vida
     this.dodgeChance = 0;                    // probabilidad de esquivar un golpe
     this.healMul = 1;                        // × a lo que te curan
+    this.megaStone = 0;                      // Piedra Mega en la mano (systems/mega.js)
+    this.megaDelta = null;                   // lo que sumó la Mega (megaUp), para deshacerlo
+    this.crystalsFound = 0;                  // Cristales Mega de esta run (pantalla final)
     this.banned = new Set();                 // movimientos vetados (Mejoras → Veto): no salen en las cartas
     this.bind = {};                          // movimiento -> hueco fijo (0-3), elegido en Mejoras
     this.coins = 0;            // monedas recogidas en esta run
@@ -137,6 +140,29 @@ G.Player = class Player {
     this.setAbility();
     this.hp = this.dead ? 0 : Math.min(this.maxHp, Math.max(1, ratio * this.maxHp));
     if (G.Coop && G.Coop.active && !this.remote) G.Coop.evolved(this.dex);     // los compañeros ven tu nuevo aspecto
+  }
+
+  /**
+   * Megaevoluciona (systems/mega.js): como evolve, y además la mejora fija de la Mega (G.Mega.BONUS).
+   * Una sola vez; clearMega la deshace restando justo lo que sumó.
+   */
+  megaUp(toDex) {
+    if (this.megaDelta || !G.Mons.monFor(toDex)) return;
+    const B = G.Mega.BONUS;
+    this.evolve(toDex);
+    const d = { atk: 1 + B.dmg, spd: 1 + B.spd, crit: B.crit, hp: this.maxHp * B.hp };
+    this.atkMul *= d.atk; this.spdMul *= d.spd; this.critChance += d.crit; this.maxHp += d.hp;
+    if (!this.dead) this.hp = Math.min(this.maxHp, this.hp + d.hp + this.maxHp * B.heal);
+    this.megaDelta = d;
+  }
+
+  clearMega() {
+    const d = this.megaDelta;
+    if (!d) return;
+    this.atkMul /= d.atk; this.spdMul /= d.spd; this.critChance -= d.crit;
+    this.maxHp = Math.max(1, this.maxHp - d.hp);
+    this.hp = Math.min(this.hp, this.maxHp);
+    this.megaDelta = null;
   }
 
   /** Sólo el aspecto: Pokémon, tamaño y animación (también lo usan los compañeros en cooperativo). */

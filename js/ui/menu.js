@@ -67,7 +67,7 @@ G.MenuUI = (() => {
       };
     });
 
-    const owned = Object.keys(s.owned).filter(d => G.DEX_BY[d]).length;
+    const owned = Object.keys(s.owned).filter(d => G.DEX_BY[d] && !G.isMega(+d)).length;
     const shinies = Object.keys(s.shiny || {}).length;
     $('menu-dex-count').textContent = `${owned} / ${G.DEX.length}` + (shinies ? ` · ${shinies} shiny` : '');
 
@@ -122,7 +122,7 @@ G.MenuUI = (() => {
     G.UI.show('scr-dex', true);
     const s = G.DB.save;
     if (dexSel == null) { dexSel = s.partner; dexGen = G.DEX_BY[s.partner].gen; }
-    const owned = Object.keys(s.owned).filter(d => G.DEX_BY[d]).length;
+    const owned = Object.keys(s.owned).filter(d => G.DEX_BY[d] && !G.isMega(+d)).length;
     $('dex-total').textContent = `${owned} / ${G.DEX.length}`;
 
     // Pestañas de generación (y "Todas"), con cuántos tienes de cada una.
@@ -310,6 +310,12 @@ G.MenuUI = (() => {
         <div class="chips" style="justify-content:center;align-items:center;margin-top:4px">${chain.map(d =>
           `<button class="chip" type="button" data-evo-from="${d}"${s.owned[d] ? '' : ' style="opacity:.6" title="Aún no lo tienes"'}>${G.DEX_BY[d].name}</button>`).join(' <span class="sub">›</span> ')}</div></div>` : '';
 
+    // Megas de esta forma (se desbloquean en la Forja; los textos de la Mega van en inglés).
+    const megas = (G.MEGA && G.MEGA[dex]) || [];
+    const megaRow = megas.length ? `<div class="center" style="margin:0 0 8px"><span class="sub">Mega forms</span>
+        <div class="chips" style="justify-content:center;margin-top:4px">${megas.map(d =>
+          `<span class="chip"${s.owned[d] ? '' : ' style="opacity:.6" title="Unlock it in the Forge"'}>${G.DEX_BY[d].name}</span>`).join(' ')}</div></div>` : '';
+
     const box = $('dex-detail');
     box.innerHTML = `
       <canvas id="dex-big" class="stage" width="220" height="190"></canvas>
@@ -323,7 +329,7 @@ G.MenuUI = (() => {
         <div style="color:${G.Gacha.RARITY_COLOR[p.rarity]}">${G.UI.stars(p.rarity, 24)} ${G.Gacha.RARITY_NAME[p.rarity]}</div>
         <div style="margin:6px 0">${own ? G.UI.typeChips(p.types) : ''}</div>
       </div>
-      ${evoFrom}
+      ${evoFrom}${megaRow}
       ${own ? `
         ${bar('Vida', q.hp, max.hp, q.hp)}
         ${bar('Ataque', q.pa, max.atk, '×' + q.pa.toFixed(2), 'pa')}

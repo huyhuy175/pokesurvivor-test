@@ -340,3 +340,8 @@ test('co-op orbs: the host applies a guest orb only if the guest really has it, 
   G.Orbs.add(guest, 'quick');
   assert.ok(!G.Orbs.canTake(guest, 'blowback'));     // y 4 huecos
 });
+test('evo events carry a Mega dex (>= 10000) without truncation', () => {
+  for (const ev of [['evo', 10001], ['evo', 'u7k2', 10093], ['evo', 'u7k2', 6]]) {
+    assert.deepEqual(C.decode(C.encode([ev])), [ev]);
+  }
+});

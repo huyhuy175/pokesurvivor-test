@@ -657,7 +657,7 @@ G.Ranking = (() => {
   async function markedAccounts() {
     const s = await fbx().fs.collection('saves').where('ban', '==', true).limit(100).get();
     return s.docs.map(d => { const v = d.data().save || {}; return { uid: d.id, name: v.name || '?', coins: v.coins || 0,
-      t1: (v.tickets || {}).t1 || 0, t10: (v.tickets || {}).t10 || 0, owned: Object.keys(v.owned || {}).length }; });
+      t1: (v.tickets || {}).t1 || 0, t10: (v.tickets || {}).t10 || 0, owned: Object.keys(v.owned || {}).filter(d => !(G.isMega && G.isMega(+d))).length }; });
   }
 
   return { PERIODS, periodIds, board, runStarted, submitSolo, submitGroup, top, topDmg, myRank, removeMine,

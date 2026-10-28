@@ -93,6 +93,7 @@ for (const [i, lang] of langs.entries()) {
     load('js/data/changelog.js');
     if (lang !== 'en') for (const entry of G.CHANGELOG.filter(e => e.d >= '2026-10-18')) {
       for (const pair of [entry.title, ...(entry.new || []), ...(entry.chg || []), ...(entry.fix || [])]) {
+        if (pair[2] === 'en-only') continue;      // sólo en inglés a propósito (ver changelog.js)
         assert.ok(G.I18n.has(pair[0]), pair[0]);
       }
     }

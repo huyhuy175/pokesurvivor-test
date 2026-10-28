@@ -52,7 +52,7 @@ JSON trust model.
 
 ## Events added after version 1
 
-- `evo` — a player evolved (2026-10-27). Guest to host: `['evo', dex]`; host to everyone else: `['evo', uid, dex]`.
+- `evo` — a player evolved (2026-10-27). Guest to host: `['evo', dex]`; host to everyone else: `['evo', uid, dex]`. A Mega evolution (2026-10-28) uses the same event with the Mega's dex (>= 10000, `G.MEGA_DEX`); a client that does not know that dex ignores it (`mateLook` checks `G.DEX_BY`).
   (Not `ev`: that name already carries `G.Events` messages.)
   The receiver validates that `dex` is an integer present in the Pokédex and swaps the player's look (`Player.setLook`)
   once the new sprite sheets are loaded. Stats and passives are not synchronised: every machine runs its own player.

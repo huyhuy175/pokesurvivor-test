@@ -2,7 +2,7 @@
 (() => {
   // Si un archivo no llega a cargarse (conexión móvil que se corta), mejor
   // avisar que arrancar a medias.
-  const NEED = ['U', 'I18n', 'Settings', 'DB', 'Audio', 'Input', 'Touch', 'Sprites', 'Camera', 'Moves', 'Enemies', 'Upgrades', 'Items', 'PassiveFX', 'Evo', 'Forge',
+  const NEED = ['U', 'I18n', 'Settings', 'DB', 'Audio', 'Input', 'Touch', 'Sprites', 'Camera', 'Moves', 'Enemies', 'Upgrades', 'Items', 'PassiveFX', 'Evo', 'Mega', 'Forge',
                 'World', 'FX', 'Projectiles', 'EnemyMgr', 'Pickups', 'Player', 'Combat', 'Spawner', 'LevelUp', 'Gacha',
                 'Rift', 'Weather', 'Progress', 'Hazards', 'Social', 'NetCodec', 'Net', 'Coop', 'Ranking', 'Icons', 'UI', 'HUD',
                 'MenuUI', 'RunUI', 'SettingsUI', 'Funding', 'SupportUI', 'Game', 'Flow'];

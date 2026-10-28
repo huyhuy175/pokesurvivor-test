@@ -369,7 +369,7 @@ G.Game = (() => {
     if (sent) sent.then(b => { if (b && b.some(p => p !== 'a')) G.DB.commit(true); }).catch(() => {});
 
     G.RunUI.showOver({
-      dead, time, level: pl.level, kills: pl.kills, bosses: pl.bosses, coins, record, t1: pl.t1, t10: pl.t10, shards: pl.shardsFound || 0, judge,
+      dead, time, level: pl.level, kills: pl.kills, bosses: pl.bosses, coins, record, t1: pl.t1, t10: pl.t10, shards: pl.shardsFound || 0, crystals: pl.crystalsFound || 0, judge,
       moves: pl.moves, caught,
       breakdown: Object.entries(parts).filter(([, v]) => v).map(([k, v]) => `${k} ${v}`).join(' · ') +
                  (mul > 1 ? ` · ×${mul.toFixed(2)} Fortuna` : '')
@@ -458,19 +458,21 @@ G.Game = (() => {
   let evoOpen = false;               // la elección de forma está en pantalla
   function offerEvolution() {
     if (!pl || pl.dead || pl.evolving || state !== 'playing' || G.Judgment.cinematic) return;
-    if (!G.Evo.ready(pl)) return;
+    // Evolución normal o, si no hay, Megaevolución (systems/mega.js): mismas cartas y mismo flujo.
+    const E = G.Evo.ready(pl) ? G.Evo : G.Mega.ready(pl) ? G.Mega : null;
+    if (!E) return;
     if (['scr-bond', 'scr-pause', 'scr-item', 'scr-levelup'].some(G.UI.isOpen)) return;
-    const opts = G.Evo.options(pl);
-    if (opts.length === 1) { G.Evo.evolveNow(pl, opts[0]); return; }
+    const opts = E.options(pl);
+    if (opts.length === 1) { (E === G.Evo ? G.Evo.evolveNow : G.Mega.megaNow)(pl, opts[0]); return; }
     G.Sprites.preload(opts, 4000, pl.shiny);
     state = 'choice'; evoOpen = true;
     if (G.Coop.active) G.Coop.holdStart();
     G.Audio.sfx('levelup');
-    G.RunUI.showLevelUp(pl.level, G.Evo.cards(pl), card => {
+    G.RunUI.showLevelUp(pl.level, E.cards(pl), card => {
       evoOpen = false;
       const from = pl.mon.name;
       card.apply(pl);
-      G.Evo.celebrate(pl, from, pl.dex);
+      E.celebrate(pl, from, pl.dex);
       if (state === 'choice') state = holdBy.length ? 'held' : 'playing';
       if (G.Coop.active) G.Coop.holdEnd();
       afterLevelUp();                // objetos que esperaban a que se cerrara la pantalla

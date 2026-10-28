@@ -584,7 +584,7 @@ G.ShopUI = (() => {
     }
     for (const id of tms) {
       // Cuántos de tus Pokémon la pueden aprender.
-      const n = Object.keys(s.owned).filter(d => G.DEX_BY[d] && G.Mons.canLearn(+d, id)).length;
+      const n = Object.keys(s.owned).filter(d => G.DEX_BY[d] && !G.isMega(+d) && G.Mons.canLearn(+d, id)).length;
       h += row(G.Icons.html('move:' + id, 32), `${G.T('MT')} ${moveName(id)}`,
         n ? G.I18n.f('La pueden aprender {x} de tus Pokémon', n) : G.T('Ninguno de tus Pokémon la puede aprender'), `<b class="gold">×${s.tms[id]}</b>`);
     }

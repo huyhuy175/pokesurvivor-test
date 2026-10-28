@@ -5,7 +5,7 @@
 ## 1. Luật làm việc (từ CLAUDE.md và thực tế phiên này)
 
 - Sửa **`dev.html`**, không bao giờ sửa file sinh ra: `index.html`, `js/app.min.js`, `js/lang/`, `version.json`. Hiện các file này **là bản cũ** (chưa chứa tính năng mới).
-- Không commit/push trừ khi chủ dự án yêu cầu. Thư mục **không phải git repo**. Commit (nếu có) không ghi "Co-Authored-By" hay chữ ký AI (theo CLAUDE.md).
+- Không commit/push trừ khi chủ dự án yêu cầu. Thư mục là git repo (nhánh `main`). Commit (nếu có) không ghi "Co-Authored-By" hay chữ ký AI (theo CLAUDE.md).
 - Không bật Firebase Identity Platform, không thêm gì tính phí (Cloudflare Worker/TURN đã bỏ).
 - Chuỗi giao diện mới: tiếng Tây Ban Nha trong code; tiếng Anh vào `js/data/lang-en.js`; fr/it/pt-BR/zh-Hans/zh-Hant thêm thành **hàng** trong `js/data/lang-updates.js` (mảng `rows`, thứ tự `[es, fr, it, pt-BR, zh-Hans, zh-Hant]`). Chuỗi có số dùng `{x}` và `G.I18n.f(es, ...vals)`. `node tools/build_langs.js --faltan --todo` chỉ so các khóa đã có, **không** phát hiện chuỗi mới trong code: tự kiểm tra bằng grep.
 - Changelog: `js/data/changelog.js`, es + en, mục `new`/`chg`/`fix` của ngày hiện tại. Hiện có mục `2026-10-27` (passive, tiến hóa, pause) và `2026-10-28` (Lò Tiến Hóa, thẻ mới/độ hiếm, độ khó…). Không ghi thay đổi server/DB/chi phí.
@@ -16,7 +16,7 @@
 ## 2. Cách chạy và kiểm tra
 
 - Chơi/gỡ lỗi: mở `dev.html` (thêm `?dev` để vào khi bảo trì). Thử nhanh: `G.DB.grant(4,'gacha')` (có Charmander), `G.DB.save.shards=200`, `G.Game.debugLevelUp()`.
-- Test: `node --test tests/*.cjs` (Node 24 cần glob, không dùng `tests/`). Hiện **145/145 pass**. Một file: `node --test tests/forge.test.cjs`.
+- Test: `node --test tests/*.cjs` (Node 24 cần glob, không dùng `tests/`). Hiện **179/179 pass**. Một file: `node --test tests/forge.test.cjs`.
 - Build thử: sao lưu `index.html`, `js/app.min.js`, `version.json`, `js/lang/` → `node tools/build.js --expose --sin-seo` → **khôi phục bản cũ** (bản `--expose` không được ofuscar). Đã làm nhiều lần, luôn khôi phục.
 - Mô phỏng cân bằng: `node tests/helpers/balance-sim.cjs`.
 - Bẫy khi sửa file: nhiều file là **CRLF**, một số là LF (ví dụ `progress.js`, `menu.js`, `evolution.js` là LF). Regex có `\n` hay thay chuỗi nhiều dòng dễ **thất bại âm thầm**. Cách an toàn: script Node đọc file, nhận biết CRLF/LF, thay chuỗi **duy nhất** rồi grep/test lại. Script tạm `edit.cjs` nằm trong thư mục scratchpad của phiên (có thể mất) — viết lại: `edit(file, [[cũ, mới]])` chuẩn hóa xuống dòng theo file và báo lỗi nếu chuỗi cũ không duy nhất.
@@ -57,6 +57,16 @@ Không module/bundler; mọi thứ treo trên đối tượng toàn cục `G`. T
 - **Độ khó tăng theo thời gian** (`js/data/enemies.js`: `LATE = { hp: 0.20, dmg: 0.15 }`, hàm `late`): quái và boss +20% máu, +15% sát thương ở phút 30 (mũ 1,5, dừng sau phút 40). Test: `tests/difficulty.test.cjs`.
 - **Pause "Tus estadísticas"** hiện đủ: thêm Esquiva, Daño a jefes, Daño a débiles, Curación, Imán, Experiencia, Pokémonedas (cùng Daño crítico).
 
+### 4.6 Giai đoạn 3 — Mega (xong, chưa chơi thử)
+- Spec `docs/superpowers/specs/2026-10-28-mega-design.md` (có phần điều chỉnh khi triển khai ở đầu), plan `docs/superpowers/plans/2026-10-28-mega.md`.
+- **94 dạng Mega** (gồm Mega mới Legends Z-A) sinh bởi `tools/fetch_mega.js` (PokeAPI, cache `tools/cache/mega.json`) → `js/data/mega.js`: `G.MEGA_DEX` (dex ≥ 10000, **không** nằm trong `G.DEX`), `G.MEGA[base]`, `G.MEGA_FROM[mega]`, `G.isMega(dex)`, gộp vào `G.DEX_BY`. Chỉ số = max(dạng gốc, Mega); passive = passive dạng gốc. Mega không vào gacha, không làm compañero (`isBase` sai); không tính vào Pokédex/thành tựu/yêu thích hồ sơ.
+- **Cristales Mega** theo hệ: `save.cry[type]`, khóa sổ cái `x:<tipo>` (trần 1e9). Nguồn: boss 1 (hệ đầu của boss), rương lớn 1 (một hệ của Pokémon), nhiệm vụ tuần 2 (`reward.megaCry` trong `missions.js`; boss không có Pokémon trong Pokédex rơi hệ ngẫu nhiên). Lưu ngay; màn kết thúc có dòng "Mega Crystals".
+- **Lò**: tab Mega (`G.Forge.offersMega/buyMega/megaCost`): 8 tinh thể nếu một hệ, 6+6 nếu hai hệ; Mảnh 400 (X/Y: 450). Cần có dạng gốc.
+- **Trong ván** (`js/systems/mega.js`, `G.Mega`): cấp **36** + Đá Mega (rơi như Đá Tiến Hóa) → thẻ `mevo` (`game.js: offerEvolution` xử lý Evo hoặc Mega). `Player.megaUp/clearMega`: stats Mega + thưởng cố định `BONUS` (+15% sát thương, +20% máu và hồi 25%, +8% tốc độ, +10% chí mạng), không cộng dồn, hoàn tác được.
+- **Sprite**: Mega chưa có sprite riêng dùng `sheetDex` (hoàn toàn theo dạng gốc) + aura hồng (`isFallback`). Thêm sprite thật: `docs/MEGA_ASSETS.md`. Chưa có bộ tải SpriteCollab tự động.
+- Co-op dùng lại sự kiện `evo` (dex ≥ 10000). Mọi chuỗi Mega **chỉ tiếng Anh** (dòng changelog đánh dấu `'en-only'`, test i18n bỏ qua).
+- Ước tính cần chỉnh sau khi chơi thử: `Mega.LEVEL` 36, `BONUS`, tỉ lệ rơi đá `ENEMY_DROP`, giá `Forge.MEGA_SHARDS/MEGA_CRYSTALS`, `WEEKLY_CRYSTALS`. Sau mỗi chỉnh chạy `tests/balance.test.cjs`.
+
 ### 4.5 Khác
 - Menu Kecleon: bỏ chữ "Cápsulas" ở `dev.html`. (Vẫn còn vài **comment** nhắc Cápsulas trong code — vô hại.)
 
@@ -64,9 +74,18 @@ Không module/bundler; mọi thứ treo trên đối tượng toàn cục `G`. T
 
 1. **Chơi thử thủ công** (chưa ai chơi bản này): `dev.html?dev` — Mejoras (chỉ dạng gốc), ficha dạng tiến hóa ("Evoluciona de"), Lò Tiến Hóa (mua, phân trang, lọc), banner Hoenn/Sinnoh (ghi chú Épica), màn lên cấp với 4 thẻ và các độ hiếm (viền màu, Mítica có sáng), pause (các dòng mới), tiến hóa trong ván (đá/boss/rương, co-op), màn kết thúc có dòng mảnh, thanh trên cùng 3 bộ đếm (có thể chật trên điện thoại).
 2. **Tinh chỉnh số sau khi chơi thử**: mốc cấp tiến hóa `LEVELS=[12,24]` (`evolution.js`), tỉ lệ rơi đá, giá Lò `PRICE` (`forge.js`), mảnh nhận được, hệ số độ hiếm (sau mỗi lần chỉnh chạy `tests/balance.test.cjs`), `LATE` (độ khó cuối ván), tần suất thẻ chỉ số (hiện lấy ngẫu nhiên 5 thẻ chỉ số mỗi lượt trong 16 thẻ).
-3. **Giai đoạn 3 — Mega** (chưa làm, cần brainstorm → spec → plan riêng): Mega là bước cuối vĩnh viễn trong ván (~48 dạng); dữ liệu, passive qua cùng pipeline, thêm Đá Mega vào Lò; sprite: tải từ SpriteCollab 37/109 dạng đầy đủ, còn lại dùng tint/aura; cần **hướng dẫn tạo asset** cho người dùng.
-4. **Đa dạng hóa chiêu** (sau): bậc nâng cấp riêng cho từng chiêu + hiệu ứng phụ theo hệ; **không** thêm `kind` mới, **không** cân lại các `kind`.
-5. Phát hành khi chủ yêu cầu: build + export + (SEO ở máy có Python), commit/push theo yêu cầu.
+3. **Giai đoạn 3 — Mega: đã làm (2026-10-28), chưa chơi thử.** Xem mục 4.6. Danh sách chơi thử Mega (mở `dev.html?dev`; mẹo console: `G.DB.grant(6,'gacha')` lấy Charizard, `G.DB.save.cry={fire:20,dragon:20}`, `G.DB.save.shards=2000`):
+   - Lò → tab Mega: hiện đúng giá, mua được, phân trang/lọc, báo lỗi thiếu tinh thể/mảnh.
+   - Boss và rương lớn rơi tinh thể (có thông báo, lưu ngay); màn kết thúc có dòng "Mega Crystals".
+   - Trong ván: cấp 36 + Đá Mega → thẻ Mega; sau khi lên: aura hồng, chỉ số tăng rõ, máu hồi 25%, không cộng dồn.
+   - Nhiệm vụ tuần thưởng 2 tinh thể (hiện trong rewardText).
+   - Co-op: đồng đội thấy dạng Mega (sự kiện `evo`, dex ≥ 10000).
+   - Mega không xuất hiện trong gacha/Pokédex/yêu thích/đếm sở hữu.
+4. **Sprite Mega thật** (có thể làm tiếp): chưa có bộ tải; phải kiểm tra cấu trúc thư mục SpriteCollab trước rồi viết `tools/fetch_mega_sprites.js`. Đường thủ công: `docs/MEGA_ASSETS.md`.
+5. **Đa dạng hóa chiêu** (sau, cần brainstorm → spec → plan riêng): bậc nâng cấp riêng cho từng chiêu + hiệu ứng phụ theo hệ; **không** thêm `kind` mới, **không** cân lại các `kind`.
+6. **Minor còn lại (chủ dự án quyết định không sửa)**: `Player.clearMega` chưa có nơi gọi (vô hại); client cũ xóa Mega đã mở khóa khỏi `owned` trong lúc phát hành (cửa sổ rollout ngắn).
+7. Phát hành khi chủ yêu cầu: `node tools/build.js && node tools/export_data.js` + `python tools/make_seo_pages.py` (máy này không có Python → làm bước SEO ở máy khác). Hiện ~35 file Mega chưa commit (chưa ai yêu cầu commit). Commit không ký AI theo CLAUDE.md.
+8. **Thứ tự đề xuất cho phiên sau**: (1) chủ dự án chơi thử, báo số cần chỉnh → (2) chỉnh số + chạy `tests/balance.test.cjs`, `tests/difficulty.test.cjs` → (3) commit/phát hành nếu chủ yêu cầu → (4) sprite Mega hoặc đa dạng hóa chiêu.
 
 ## 6. Quyết định (rulings) và điểm chấp nhận
 

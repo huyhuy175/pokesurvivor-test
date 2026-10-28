@@ -93,6 +93,7 @@ G.DB = (() => {
       pabil: {},              // dex -> [0|1|2, fecha]: la habilidad cambiada con Cápsula (2 = oculta)
       tickets: { t1: 0, t10: 0 },   // tickets del gacha (x1 y x10)
       shards: 0,              // Fragmentos Evolutivos (Forja Evolutiva); en la libreta, clave 'sh'
+      cry: {},                // Cristales Mega: tipo -> cuántos; en la libreta, clave 'x:<tipo>'
       pity: {},               // generación del banner -> tiradas sin ★5
       legends: {},            // dex -> fecha: legendarios vencidos en grietas
       arenas: {},             // tipo -> fecha: arenas de grieta ganadas
@@ -121,6 +122,12 @@ G.DB = (() => {
       s.pupgDone = true;
     }
     s.tickets = Object.assign({ t1: 0, t10: 0 }, s.tickets);
+    // Un cliente anterior a los Cristales Mega guarda la libreta pero no sabe tocar `cry`: el saldo es el de la libreta.
+    if (isObj(s.led)) {
+      const keys = new Set();
+      for (const dev in s.led) for (const k in s.led[dev] || {}) if (/^x:[a-z]{3,8}$/.test(k)) keys.add(k);
+      for (const k of keys) curSet(s, k, Math.max(0, ledSum(s.led, k)));
+    }
     sanitize(s);
     s.v = VERSION;
     return s;
@@ -144,7 +151,8 @@ G.DB = (() => {
         const d = todo.pop();
         if (seen.has(d)) continue;
         seen.add(d);
-        if (!(from[d] && from[d].length)) out.add(d); else todo.push(...from[d]);
+        if (G.MEGA_FROM && G.MEGA_FROM[d] != null) todo.push(G.MEGA_FROM[d]);          // una Mega vuelve a su forma base
+        else if (!(from[d] && from[d].length)) out.add(d); else todo.push(...from[d]);
       }
       return [...out].sort((a, b) => a - b);
     };
@@ -160,7 +168,7 @@ G.DB = (() => {
     }
     for (const k of ['partner', 'starter']) {
       const dex = s[k];
-      if (dex == null || !(from[dex] && from[dex].length)) continue;
+      if (dex == null || !((from[dex] && from[dex].length) || (G.MEGA_FROM && G.MEGA_FROM[dex] != null))) continue;
       const r = roots(dex), base = r.find(d => s.owned && s.owned[d]) || r[0];
       if (base == null) continue;
       s[k] = base;
@@ -182,6 +190,12 @@ G.DB = (() => {
     s.tickets.t1 = n(s.tickets.t1);
     s.tickets.t10 = n(s.tickets.t10);
     s.shards = Math.min(1e9, n(s.shards));
+    if (isObj(s.cry)) {
+      for (const t of Object.keys(s.cry)) {
+        const v = Math.min(1e9, n(s.cry[t]));
+        if (!/^[a-z]{3,8}$/.test(t) || !v) delete s.cry[t]; else s.cry[t] = v;
+      }
+    } else s.cry = {};
     if (isObj(s.led)) {
       for (const dev of Object.keys(s.led)) {
         const e = s.led[dev];
@@ -289,8 +303,10 @@ G.DB = (() => {
    * libreta: 'b:<objeto>' (save.bag) y 'm:<movimiento>' (save.tms). Así una Menta
    * gastada en un aparato no vuelve a aparecer al fusionar con el otro.
    */
-  const isCurKey = k => !!CUR[k] || /^b:[a-z0-9]{1,12}$/.test(k) || /^m:[a-z0-9-]{1,40}$/.test(k);
-  const SUB = { b: 'bag', m: 'tms' };
+  /* Y, desde el 28-10-2026, los Cristales Mega: 'x:<tipo>' (save.cry), con la misma libreta. */
+  const isCurKey = k => !!CUR[k] || /^b:[a-z0-9]{1,12}$/.test(k) || /^m:[a-z0-9-]{1,40}$/.test(k) || /^x:[a-z]{3,8}$/.test(k);
+  const SUB = { b: 'bag', m: 'tms', x: 'cry' };
+  const SUB_CAP = { x: 1e9 };            // el resto de la mochila llega a 999
   function curGet(s, k) {
     if (CUR[k]) return CUR[k][0](s);
     const o = s[SUB[k[0]]];
@@ -299,13 +315,14 @@ G.DB = (() => {
   function curSet(s, k, v) {
     if (CUR[k]) { CUR[k][1](s, v); return; }
     const o = s[SUB[k[0]]] = s[SUB[k[0]]] || {};
-    if (v > 0) o[k.slice(2)] = Math.min(999, v); else delete o[k.slice(2)];
+    if (v > 0) o[k.slice(2)] = Math.min(SUB_CAP[k[0]] || 999, v); else delete o[k.slice(2)];
   }
   /** Todas las cosas con saldo de una partida (y de su libreta). */
   function curKeys(s, led) {
     const ks = new Set(Object.keys(CUR));
     for (const id of Object.keys(s.bag || {})) ks.add('b:' + id);
     for (const id of Object.keys(s.tms || {})) ks.add('m:' + id);
+    for (const id of Object.keys(s.cry || {})) ks.add('x:' + id);
     for (const dev in led || {}) for (const k in led[dev]) if (isCurKey(k)) ks.add(k);
     return [...ks];
   }
@@ -582,7 +599,7 @@ G.DB = (() => {
    * cierra de verdad es la clave de la API restringida a estos dominios en
    * Google Cloud; esto frena las copias que ni lo miran (14-10-2026).
    */
-  const HOSTS = ['pokesurvivor.com', 'www.pokesurvivor.com', 'jpter78.github.io', 'localhost', '127.0.0.1'];
+  const HOSTS = ['pokesurvivor.com', 'www.pokesurvivor.com', 'jpter78.github.io', 'huyhuy175.github.io', 'localhost', '127.0.0.1'];
 
   async function initCloud() {
     const cfg = G.FIREBASE_CONFIG;
@@ -990,6 +1007,8 @@ G.DB = (() => {
 
   // ---------------- helpers de partida ----------------
 
+  /** Cristales Mega de ese tipo (de la partida actual, o de `s`). */
+  function crystals(type, s = save) { return (s && s.cry && s.cry[type]) || 0; }
   function owns(dex) { return !!(save && save.owned[dex]); }
 
   function grant(dex, from) {
@@ -1024,7 +1043,7 @@ G.DB = (() => {
 
   return {
     ready, register, login, loginWithGoogle, playAsGuest, logout, commit, deleteAccount, flush: pushNow, saveNow,
-    owns, grant, ownsShiny, grantShiny, merge, sanitize, setName, upgradesOf, isFav, setFav,
+    owns, crystals, migrate, grant, ownsShiny, grantShiny, merge, sanitize, setName, upgradesOf, isFav, setFav,
     onSync(fn) { listeners.add(fn); },
     onLeave(fn) { leaveHooks.push(fn); },
     /** Acceso de bajo nivel para los módulos de red (sólo en modo nube). */

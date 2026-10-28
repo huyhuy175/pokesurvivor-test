@@ -14,7 +14,15 @@ G.Sprites = (() => {
   const PX = 2;
   const sheets = new Map();          // "dex/Anim[/s]" -> {img, ready, failed}
 
-  function meta(dex) { return G.SPRITE_META[dex] || null; }
+  /**
+   * Carpeta de hojas (assets/pokemon/{n}/) de ese Pokémon: la suya, o la de su forma base si es una
+   * Mega que aún no tiene hojas propias (data/mega.js; se dibuja con un aura, ver isFallback).
+   */
+  function sheetDex(dex) { return G.SPRITE_META[dex] ? dex : (G.MEGA_FROM && G.MEGA_FROM[dex]) || dex; }
+  /** ¿Es una Mega que usa las hojas de su forma base? */
+  function isFallback(dex) { return !G.SPRITE_META[dex] && !!(G.MEGA_FROM && G.MEGA_FROM[dex]); }
+
+  function meta(dex) { return G.SPRITE_META[sheetDex(dex)] || null; }
 
   /** ¿Flota en su sprite? (tools/hover_flags.py) Pasa por encima de rocas y agua. */
   function hovers(dex) { const m = meta(dex); return !!(m && m.hv); }
@@ -39,6 +47,25 @@ G.Sprites = (() => {
     whites.set(img, c);
     return c;
   }
+
+  /** Copia de una imagen teñida de un color (el aura de las Mega sin hojas propias); una por hoja y color. */
+  const tints = new WeakMap();
+  function tinted(img, color) {
+    let byColor = tints.get(img);
+    if (!byColor) tints.set(img, byColor = new Map());
+    let c = byColor.get(color);
+    if (c) return c;
+    c = document.createElement('canvas');
+    c.width = img.width; c.height = img.height;
+    const x = c.getContext('2d');
+    x.drawImage(img, 0, 0);
+    x.globalCompositeOperation = 'source-in';
+    x.fillStyle = color;
+    x.fillRect(0, 0, c.width, c.height);
+    byColor.set(color, c);
+    return c;
+  }
+  const MEGA_AURA = '#ff6bd6';
 
   /** ¿Tiene versión shiny? (assets/pokemon/{dex}/s/) */
   function hasShiny(dex) { const m = meta(dex); return !!(m && m.sh); }
@@ -84,7 +111,8 @@ G.Sprites = (() => {
     shiny = shiny && !!(m && m.sh);
     const name = animName(dex, anim, shiny);
     if (!name) return null;
-    const k = dex + '/' + name + (shiny ? '/s' : '');
+    const sd = sheetDex(dex);
+    const k = sd + '/' + name + (shiny ? '/s' : '');
     let s = sheets.get(k);
     const now = Date.now();
     if (s) {
@@ -95,7 +123,7 @@ G.Sprites = (() => {
     }
     if (sheets.size >= MAX_SHEETS) evict(now);
     s = { ready: false, failed: false, img: new Image(), tries: 0, retryAt: 0, at: now,
-          src: `assets/pokemon/${dex}/${shiny ? 's/' : ''}${name}.png` };
+          src: `assets/pokemon/${sd}/${shiny ? 's/' : ''}${name}.png` };
     s.img.onload = () => { s.ready = true; };
     s.img.onerror = () => { s.failed = true; s.retryAt = performance.now() + 1000 * Math.min(8, 2 ** s.tries++); };
     s.img.src = s.src;
@@ -268,6 +296,13 @@ G.Sprites = (() => {
       const dx = Math.round(x - m.ax * k), dy = Math.round(y - m.ay * k);
       const prev = ctx.globalAlpha;
       if (alpha < 1) ctx.globalAlpha = prev * alpha;
+      // Mega sin hojas propias: aura rosa algo mayor detrás, con los pies en el mismo sitio.
+      if (isFallback(this.dex) && !opts.flash) {
+        const w2 = m.w * k * 1.1, h2 = m.h * k * 1.1;
+        ctx.globalAlpha = prev * alpha * 0.45;
+        ctx.drawImage(tinted(s.img, MEGA_AURA), sx, sy, m.w, m.h, Math.round(dx - (w2 - m.w * k) / 2), Math.round(dy - (h2 - m.h * k)), w2, h2);
+        ctx.globalAlpha = alpha < 1 ? prev * alpha : prev;
+      }
       // Destello: blanco entero (enemigos) o medio blanco encima (tu Pokémon).
       if (!opts.flash || opts.softFlash) ctx.drawImage(s.img, sx, sy, m.w, m.h, dx, dy, m.w * k, m.h * k);
       if (opts.flash) {
@@ -278,6 +313,6 @@ G.Sprites = (() => {
     }
   }
 
-  return { PX, meta, hasShiny, hovers, white, animMeta, sheet, preload, dirFromAngle, bodyRadius, bodyHeight, playerScale, playerRadius,
+  return { PX, meta, sheetDex, isFallback, hasShiny, hovers, white, animMeta, sheet, preload, dirFromAngle, bodyRadius, bodyHeight, playerScale, playerRadius,
            drawShadow, Animator, ANIMS, get sheetCount() { return sheets.size; } };
 })();

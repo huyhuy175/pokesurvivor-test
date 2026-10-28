@@ -99,14 +99,16 @@ G.Mons = (() => {
     return true;
   }
 
-  /** Forma base: sin pre-evolución. Sólo ésas salen del gacha y se eligen de compañero. */
-  const isBase = dex => !(G.EVO_FROM && G.EVO_FROM[dex]);
+  /** Forma base: sin pre-evolución ni Mega. Sólo ésas salen del gacha y se eligen de compañero. */
+  const isBase = dex => !(G.EVO_FROM && G.EVO_FROM[dex]) && !(G.MEGA_FROM && G.MEGA_FROM[dex]);
 
   /**
    * De quién viene: sus pre-evoluciones, de la forma base a la directa (Charizard → [Charmander,
    * Charmeleon]); vacío si es una forma base. Con varios orígenes sigue el de menor Nº.
    */
   function lineage(dex) {
+    const mega = G.MEGA_FROM && G.MEGA_FROM[dex];
+    if (mega != null) return [...lineage(mega), mega];       // una Mega viene de su forma base
     const out = [];
     for (let d = dex, from; (from = G.EVO_FROM && G.EVO_FROM[d]) && from.length && out.length < 8;) {
       d = Math.min(...from);

@@ -68,12 +68,14 @@ G.Evo = (() => {
   function onKill(pl, e, rand) {
     if (e.judge) return;
     if (e.boss) grantShards(pl, SHARDS.boss);
+    if (G.Mega) G.Mega.onKill(pl, e, rand);
     if (lootFor(pl, e.boss ? 'boss' : 'enemy', rand)) grantStone(pl);
   }
 
   /** Se abre un cofre grande. */
   function onChest(pl) {
     grantShards(pl, SHARDS.chest);
+    if (G.Mega) G.Mega.onChest(pl);
     if (lootFor(pl, 'chest')) grantStone(pl);
   }
 
