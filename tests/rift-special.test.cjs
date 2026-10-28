@@ -109,17 +109,37 @@ test('a retry that would fall after AT - ARENA_TIME - TTL does not open the spec
   assert.ok(v.R.rift && v.R.rift.special);
 });
 
-test('host: no special rift at 1499 s, exactly one at 1500 s and never twice', () => {
+test('host: no special rift at 1499 s and exactly one at 1500 s (never two at once)', () => {
   const w = world({ coop: { active: true, isHost: true } });
   w.R.update(1, w.pl, 1499);
   assert.equal(w.R.rift, null);
   w.R.update(1, w.pl, 1500);
   assert.ok(w.R.rift && w.R.rift.special, 'abre la grieta especial');
   assert.equal(specialRifts(w), 1);
-  run(w, 1501, 1560);                         // caduca (TTL) sin entrar
-  assert.equal(w.R.rift, null);
-  run(w, 1561, 1619);
-  assert.equal(specialRifts(w), 1, 'no se vuelve a abrir');
+  run(w, 1501, 1540);                         // aún no caduca: sigue la misma, sin abrir otra
+  assert.equal(specialRifts(w), 1);
+});
+
+test('an unvisited special rift reopens after it expires, until it no longer fits before the Judgment', () => {
+  const w = world({ coop: { active: true, isHost: true } });
+  run(w, 1500, 1634);                         // caduca sin que nadie entre (TTL 45 s)
+  const n = specialRifts(w);
+  assert.ok(n >= 2, 'se vuelve a abrir al caducar: ' + n);
+  run(w, 1635, 1799);
+  assert.equal(specialRifts(w), n, 'pasado AT - ARENA_TIME - TTL ya no se abre');
+  assert.ok(!w.R.rift || !w.R.rift.special || w.R.rift.ttl > 0);
+});
+
+test('entering the special rift spends the chance: it does not reopen later', () => {
+  const w = world({ coop: { active: true, isHost: true } });
+  w.R.update(1, w.pl, 1500);
+  w.pl.x = w.R.rift.x; w.pl.y = w.R.rift.y - 10;
+  w.R.update(1, w.pl, 1501);
+  assert.ok(w.R.arena);
+  const n = specialRifts(w);
+  w.pl.x = 0; w.pl.y = 0;
+  run(w, 1502, 1634);
+  assert.equal(specialRifts(w), n);
 });
 
 test('a non-host never opens the special rift', () => {

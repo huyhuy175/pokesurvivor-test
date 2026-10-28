@@ -53,6 +53,11 @@ G.CHANGELOG = [
      "Only base forms can be picked as your partner. Evolved forms can be viewed in the collection (preview only) and are used by evolving during a run. If your partner was an evolved form, it is now its base form (you receive it if you did not have it)."],
     ["Las estrellas de Prestigio ahora se muestran con ♦ en vez de ★, para no confundirlas con las nuevas estrellas de Rango.",
      "Prestige stars are now shown as ♦ instead of ★, so they are not confused with the new Rank stars."],
+  ], fix: [
+    ["La grieta especial del minuto 25 vuelve a abrirse si caduca sin que nadie entre (mientras dé tiempo antes de la Sentencia). La vida que roba un Pokémon con 'Life Steal' ya no llena la pantalla de números, y la lista del vale Free Pick carga sin congelar el juego; con Esc se cierra su panel.",
+     "The minute-25 special rift now reopens if it expires with nobody inside (as long as it still fits before the Judgment). Life stolen by a 'Life Steal' passive no longer fills the screen with numbers, and the Free Pick ticket list loads without freezing the game; Esc closes its panel."],
+    ["En el Pokédex, las casillas de los Pokémon de 4★ y 5★ llevan un borde de color y los Rank no cambian la altura de las filas.",
+     "In the Pokédex, 4★ and 5★ Pokémon now have a coloured border and Rank stars no longer change the height of the rows."],
   ] },
   { d: '2026-10-27', title: ['Pasiva propia para cada Pokémon', 'A passive of its own for every Pokémon'], new: [
     ["Tu Pokémon puede evolucionar durante la partida: al llegar al nivel 12 (o 24 si ya es una evolución) y con una Piedra Evolutiva, cambia a una forma que ya tengas en tu colección. La piedra cae de los jefes y los cofres grandes (y, muy rara vez, de los enemigos). Conserva nivel, movimientos y vida proporcional, y toma la pasiva y las estadísticas de la nueva forma.",

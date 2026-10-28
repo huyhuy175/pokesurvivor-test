@@ -19,7 +19,7 @@ G.UniqueFX = (() => {
   const near = (x, y, r) => (G.EnemyMgr ? G.EnemyMgr.queryCircle(x, y, r) : []).filter(e => !e.dead);
   const ring = (x, y, r, col) => { if (G.FX) G.FX.ring(x, y, 8, r, col, 0.4, 4); };
   const say = (pl, txt, col) => { if (G.FX) G.FX.dmgText(pl.x, pl.y - (pl.bodyH || 0) - 16, txt, col, true); };
-  const heal = (pl, n) => { if (pl.heal) pl.heal(n); else pl.hp = Math.min(pl.maxHp, pl.hp + n); };
+  const heal = (pl, n, quiet) => { if (pl.heal) pl.heal(n, quiet); else pl.hp = Math.min(pl.maxHp, pl.hp + n); };
   /** Daña a los enemigos en el círculo (x, y, r). */
   const blast = (x, y, r, dmg, col, knock = 0) => {
     for (const e of near(x, y, r)) e.hurt(dmg, col, e.x - x, e.y - y, knock);
@@ -58,7 +58,7 @@ G.UniqueFX = (() => {
       } }) },
     lifeSteal: { tier: 'basic', cost: 0.24, min: 5, max: 25,
       text: v => `${v}% chance on hit to heal 1% of max health.`,
-      hooks: v => ({ hit: pl => { if (Math.random() < v / 100) heal(pl, pl.maxHp * 0.01); } }) },
+      hooks: v => ({ hit: pl => { if (Math.random() < v / 100) heal(pl, pl.maxHp * 0.01, true); } }) },   // sin número: se curaría a cada golpe
     thornAura: { tier: 'basic', cost: 0.03, min: 50, max: 200,
       text: v => `Every second, foes close to you take thorn damage (${v}% power).`,
       hooks: v => ({ tick: (pl, dt) => {
@@ -195,7 +195,7 @@ G.UniqueFX = (() => {
       text: v => `+${half(v)}% damage to all foes and a further +${v}% to bosses.`,
       hooks: v => ({ out: (pl, m, e) => k(half(v)) * (e && e.boss ? k(v) : 1) }) },
     spectralClone: { tier: 'supreme', cost: 0.06, min: 50, max: 150,
-      text: v => `A spectral echo repeats 1 in 4 hits (${v}% power).`,
+      text: v => `1 in 4 hits is followed by a spectral echo that deals extra damage (${v}% power).`,
       hooks: v => ({ hit: (pl, e) => {
         if (e && !e.dead && Math.random() < 0.25) e.hurt((8 + lvl(pl) * 2) * v / 100, '#b08cff', 0, 0, 0);
       } }) },

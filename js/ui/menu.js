@@ -261,7 +261,7 @@ G.MenuUI = (() => {
     const s = G.DB.save;
     const own = !!s.owned[p.dex], sh = !!(s.shiny && s.shiny[p.dex]);
     const cell = document.createElement('div');
-    cell.className = 'cell' + (own ? '' : ' locked') + (p.dex === dexSel ? ' on' : '');
+    cell.className = 'cell' + (own ? '' : ' locked') + (own && p.rarity >= 4 ? ' r' + p.rarity : '') + (p.dex === dexSel ? ' on' : '');
     cell.dataset.pad = '1';
     cell.insertAdjacentHTML('beforeend', `<span class="no">${String(p.dex).padStart(3, '0')}${G.DB.isFav(p.dex) ? ' ' + G.Icons.html('star', 10) : ''}</span>`);
     if (p.dex === s.partner) cell.insertAdjacentHTML('beforeend', `<span class="badge-r" title="Compañero">${G.Icons.html('crown', 14)}</span>`);
@@ -269,7 +269,8 @@ G.MenuUI = (() => {
     const useShiny = sh && p.dex === s.partner && s.partnerShiny;
     cell.appendChild(G.UI.spriteCanvas(p.dex, 92, 80, { scale: 2, silhouette: !own, shadow: own, shiny: useShiny }));
     cell.insertAdjacentHTML('beforeend', `<b>${own ? p.name : '???'}</b>${G.UI.stars(p.rarity, 9)}`);
-    if (own && G.Rank.starsOf(p.dex) > 0) cell.insertAdjacentHTML('beforeend', `<div class="rank-stars">${G.UI.rankStars(G.Rank.starsOf(p.dex), 9)}</div>`);
+    const rs = own ? G.Rank.starsOf(p.dex) : 0;                       // siempre hay hueco: así todas las filas de la cuadrícula miden igual
+    cell.insertAdjacentHTML('beforeend', `<div class="rank-stars">${rs > 0 ? G.UI.rankStars(rs, 9) : ''}</div>`);
     cell.onclick = () => {
       dexSel = p.dex;
       $('dex-grid').querySelectorAll('.cell').forEach(c => c.classList.remove('on'));
@@ -397,9 +398,12 @@ G.MenuUI = (() => {
     let h = `<div class="mx-row"><span>Rank</span><span class="rank-stars">${G.UI.rankStars(pr.stars, 14)}</span><small>${next}</small></div>
       <div class="mx-row"><span>Pasiva</span><b translate="no">${ab.name}</b></div>
       <p class="sub mx-desc" translate="no">${ab.desc}</p>`;
-    if (u && u.name && u.locked) {
-      h += `<div class="mx-row mx-locked"><span>Unique</span><b translate="no">${u.name}</b><small>Unlocks at 3★</small></div>
-      <p class="sub mx-desc mx-locked" translate="no">${u.desc}</p>`;
+    if (u && u.name) {
+      const gold = (G.DEX_BY[dex] || {}).rarity === 5 ? ' class="u5"' : '';          // la única de los 5★ va en dorado
+      h += u.locked
+        ? `<div class="mx-row mx-locked"><span>Unique</span><b${gold} translate="no">${u.name}</b><small>Unlocks at 3★</small></div>
+      <p class="sub mx-desc mx-locked" translate="no">${u.desc}</p>`
+        : `<div class="mx-row"><span>Unique</span><b${gold} translate="no">${u.name}</b></div>`;
     }
     return h;
   }

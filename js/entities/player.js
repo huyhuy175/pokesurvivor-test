@@ -435,13 +435,13 @@ G.Player = class Player {
     }
   }
 
-  heal(amount) {
+  heal(amount, quiet = false) {
     amount *= this.healMul;                                              // carta Curación mejorada
     if (this.abil && this.abil.healMul) amount *= this.abil.healMul;     // Gula, Recogida
     const before = this.hp;
     this.hp = Math.min(this.maxHp, this.hp + amount);
     const got = Math.round(this.hp - before);
-    if (got >= 1) G.FX.dmgText(this.x, this.y - this.bodyH - 6, '+' + got, '#5fe08a');
+    if (got >= 1 && !quiet) G.FX.dmgText(this.x, this.y - this.bodyH - 6, '+' + got, '#5fe08a');
   }
 
   addMaxHp(amount) { this.maxHp += amount; this.hp += amount; }

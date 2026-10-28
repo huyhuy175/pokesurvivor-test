@@ -16,6 +16,7 @@ G.GachaUI = (() => {
     // Saltar: se acaba la tragaperras y salen todas las cartas de golpe (también con Esc).
     $('pull-skip').onclick = skipNow;
     addEventListener('keydown', e => { if (e.key === 'Escape' && busy && !$('pull-fx').classList.contains('hidden')) skipNow(); });
+    addEventListener('keydown', e => { if (e.key === 'Escape' && !$('wish-pick').classList.contains('hidden')) closePick(); });
 
     const tabs = $('gacha-gens');
     G.Gacha.BANNERS.forEach(b => {
@@ -205,6 +206,7 @@ G.GachaUI = (() => {
     $('wish-pick').classList.remove('hidden');
   }
 
+  let pickToken = 0;
   function renderPick() {
     const s = G.DB.save, box = $('wish-pick-list'), t = G.Gacha.pendingType(s);
     const list = pickKind === 'type' ? (t ? G.Gacha.missing(s, t) : []) : G.Gacha.missing(s);
@@ -214,18 +216,25 @@ G.GachaUI = (() => {
     $('wish-pick-sub').textContent = 'Choose the Pokémon you want. It will be yours for free.';
     box.innerHTML = '';
     $('wish-close').classList.remove('hidden');
-    for (const dex of list) {
-      const mon = G.DEX_BY[dex];
-      const c = document.createElement('button');
-      c.className = 'pcard r' + mon.rarity;
-      c.style.setProperty('--rc', G.Gacha.RARITY_COLOR[mon.rarity]);
-      c.dataset.dex = dex;
-      c.innerHTML = `<div class="stars">${G.UI.stars(mon.rarity, 16)}</div>`;
-      c.appendChild(G.UI.spriteCanvas(dex, 96, 90, { scale: 2 }));
-      c.insertAdjacentHTML('beforeend', `<b>${mon.name}</b>`);
-      c.onclick = () => choose(dex);
-      box.appendChild(c);
-    }
+    // Free Pick puede listar cientos: se dibujan por tandas para no congelar los equipos lentos.
+    const token = ++pickToken, CHUNK = 36;
+    const addFrom = i => {
+      if (token !== pickToken || !pickKind) return;                     // se cerró o se volvió a dibujar
+      for (const dex of list.slice(i, i + CHUNK)) {
+        const mon = G.DEX_BY[dex];
+        const c = document.createElement('button');
+        c.className = 'pcard r' + mon.rarity;
+        c.style.setProperty('--rc', G.Gacha.RARITY_COLOR[mon.rarity]);
+        c.dataset.dex = dex;
+        c.innerHTML = `<div class="stars">${G.UI.stars(mon.rarity, 16)}</div>`;
+        c.appendChild(G.UI.spriteCanvas(dex, 96, 90, { scale: 2 }));
+        c.insertAdjacentHTML('beforeend', `<b>${mon.name}</b>`);
+        c.onclick = () => choose(dex);
+        box.appendChild(c);
+      }
+      if (i + CHUNK < list.length) requestAnimationFrame(() => addFrom(i + CHUNK));
+    };
+    addFrom(0);
   }
 
   function choose(dex) {

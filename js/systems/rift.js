@@ -93,7 +93,11 @@ G.Rift = (() => {
     if (rift) {
       rift.t += dt;
       rift.ttl -= dt;
-      if (rift.ttl <= 0) { rift = null; return; }
+      if (rift.ttl <= 0) {
+        if (rift.special && !arena && authority()) { specialDone = false; specialT = 0; }   // nadie entró: otra oportunidad (mientras quepa antes de la Sentencia)
+        rift = null;
+        return;
+      }
       if (!arena && !pl.dead && G.U.dist2(pl.x, pl.y, rift.x, rift.y - 10) < 30 * 30) enter();
     } else if (!arena && authority() && time > FROM && time < G.Judgment.AT - 120) {
       checkT -= dt;

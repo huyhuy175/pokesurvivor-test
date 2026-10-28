@@ -206,7 +206,12 @@ label { display: block; font-size: 14px; color: var(--muted); margin: 8px 0 4px;
   padding: 4px 2px 6px; transition: transform .08s, border-color .12s, background .12s;
 }
 .cell:hover { transform: translateY(-2px); border-color: var(--edge); background: rgba(255,255,255,.08); }
+.cell.r4 { border-color: #c47bff; box-shadow: 0 0 6px rgba(196,123,255,.45); }
+.cell.r5 { border-color: #ffcb3d; box-shadow: 0 0 8px rgba(255,203,61,.6); }
 .cell.on { border-color: var(--gold); background: rgba(255,210,63,.14); }
+.rank-stars { white-space: nowrap; line-height: 1; }
+.cell .rank-stars { height: 11px; line-height: 11px; letter-spacing: -1px; overflow: hidden; }
+.mon-extra b.u5 { color: var(--gold); text-shadow: 0 0 6px rgba(255,203,61,.55); }
 .cell.locked { cursor: default; opacity: .75; }
 .cell.locked:hover { transform: none; border-color: rgba(244,248,255,.18); }
 .cell canvas { display: block; margin: 0 auto; }
