@@ -18,8 +18,8 @@
  *   y del invitado al anfitrión 're' (he entrado en la grieta).
  *
  * Grieta ESPECIAL (minuto 25, una por partida): la abre el anfitrión en cuanto
- * no hay grieta, arena ni jefe (si no, lo reintenta cada CHECK s hasta la
- * Sentencia). Dentro espera un legendario APEX (apexDef). Ganar da un vale wish
+ * no hay grieta, arena ni jefe (si no, lo reintenta cada CHECK s mientras el
+ * portal y la arena aún quepan antes de la Sentencia: AT - ARENA_TIME - TTL). Dentro espera un legendario APEX (apexDef). Ganar da un vale wish
  * a cada jugador (cada ordenador tira el suyo) y el vínculo de siempre, pero no
  * los tickets ni las monedas del legendario normal; perder no da nada.
  * No hace falta mensaje nuevo: la cfg de 'arena' lleva special: true.
@@ -39,6 +39,8 @@ G.Rift = (() => {
   const SPECIAL_AT = 1500;
   const APEX = { hp: 6, dmg: 1.8, spd: 1.2, shots: 1.5 };
   let specialDone = false, specialT = 0;
+  /** Último momento para abrir la especial: acaba (portal + arena) antes de la Sentencia. */
+  const specialEnd = () => G.Judgment.AT - ARENA_TIME - TTL;
   const authority = () => !G.Coop.active || G.Coop.isHost;
   const TS = () => G.Tiles.T * G.Sprites.PX;
 
@@ -79,8 +81,9 @@ G.Rift = (() => {
   // ---------------- grieta en el mapa ----------------
 
   function update(dt, pl, time) {
-    // La especial, aparte: no cuenta en misses ni la para el límite de AT - 120.
-    if (!specialDone && authority() && time >= SPECIAL_AT && time < G.Judgment.AT) {
+    // La especial, aparte: no cuenta en misses ni la para el límite de AT - 120. Sí deja de
+    // abrirse si el portal (TTL) más la arena (ARENA_TIME) ya no caben antes de la Sentencia.
+    if (!specialDone && authority() && time >= SPECIAL_AT && time < specialEnd()) {
       specialT -= dt;
       if (specialT <= 0) {
         specialT = CHECK;
@@ -270,7 +273,8 @@ G.Rift = (() => {
     if (arena.rewarded) return;
     arena.rewarded = true;
     const id = G.Gacha.rollWish();
-    G.Shop.give(id, 1);
+    // Con la Mochila llena (999) no entra: ni se anuncia ni cuenta como encontrado.
+    if (!(G.Shop.give(id, 1) > 0)) return;
     G.DB.commit(true);
     pl.wishFound = id;
     G.FX.dmgText(pl.x, pl.y - pl.bodyH - 30, '+1 ' + G.Shop.ITEMS[id].name, '#ffd23f', true);
@@ -348,7 +352,7 @@ G.Rift = (() => {
     get inArena() { return !!arena; },
     get special() { return !!(arena && arena.special); },
     get misses() { return misses; },
-    SPECIAL_AT, APEX, apexDef,
+    SPECIAL_AT, get SPECIAL_END() { return specialEnd(); }, APEX, apexDef,
     get timeLeft() { return arena ? Math.max(0, ARENA_TIME - arena.t) : 0; },
     debugOpen() { open(); },
     /** Para pruebas: arena de un tipo ya. */

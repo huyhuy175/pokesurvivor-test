@@ -4,6 +4,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const source = file => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
 
+// Azar fijo y alto: una grieta normal necesita 5 fallos seguidos (150 s sin otra grieta) para salir,
+// así no se cruza con la especial en estas pruebas.
+Math.random = () => 0.999;
+
 // G mínimo para cargar js/systems/rift.js sin el juego.
 function world(opts = {}) {
   const calls = { broadcast: [], give: [], commit: [], say: [], added: [], rolls: 0, dmgText: [] };
@@ -31,8 +35,8 @@ function world(opts = {}) {
     Projectiles: { clear() {} }, Combat: { clearFields() {} }, Hazards: { clear() {} },
     Weather: { force() {}, clear() {} }, Camera: { kick() {} },
     Spawner: { say(t) { calls.say.push(t); } },
-    // (1620: así las grietas normales, que paran 120 s antes, ya no salen desde el 1500 y no estorban)
-    Judgment: { AT: 1620 },
+    // La de verdad (30:00). Las grietas normales no estorban: Math.random fijo (arriba) las deja sin salir.
+    Judgment: { AT: 1800 },
     DEX: mons, DEX_BY: { 150: mons[0], 151: mons[1] }, SPRITE_META: { 150: {}, 151: {} },
     DB: { save: { legends: {} }, commit(u) { calls.commit.push(u); return true; } },
     Progress: { event() {} },
@@ -84,6 +88,25 @@ test('the special rift comes before the Judgment of Arceus', () => {
   assert.equal(R.SPECIAL_AT, 1500);
   assert.match(source('js/systems/judgment.js'), /const AT = 30 \* 60;/);
   assert.ok(R.SPECIAL_AT < 1800);
+  assert.equal(R.SPECIAL_END, 1800 - 120 - 45, 'portal (45 s) + arena (2 min) acaban antes de las 30:00');
+});
+
+test('a retry that would fall after AT - ARENA_TIME - TTL does not open the special rift', () => {
+  // con un jefe vivo hasta 1625, los reintentos son 1500, 1530 … 1620 (jefe) y el siguiente, 1650 > 1635
+  const w = world({ coop: { active: true, isHost: true } });
+  w.setBoss(true);
+  run(w, 1500, 1625);
+  w.setBoss(false);
+  run(w, 1626, 1799);
+  assert.equal(specialRifts(w), 0, 'ya no da tiempo: no se abre');
+  assert.ok(!w.R.rift || !w.R.rift.special);
+  // antes del límite sí se reintenta: jefe hasta 1595 → se abre en 1620
+  const v = world({ coop: { active: true, isHost: true } });
+  v.setBoss(true);
+  run(v, 1500, 1595);
+  v.setBoss(false);
+  run(v, 1596, 1620);
+  assert.ok(v.R.rift && v.R.rift.special);
 });
 
 test('host: no special rift at 1499 s, exactly one at 1500 s and never twice', () => {
@@ -203,6 +226,16 @@ test('winning the special arena pays one wish ticket once and commits', () => {
   assert.ok(w.calls.commit.includes(true));
   assert.equal(w.pl.wishFound, 'wishtype');
   assert.ok(w.calls.dmgText.includes('+1 Type Pick Ticket'));
+});
+
+test('with the bag at the 999 cap no ticket is claimed: no wishFound and no "+1" text', () => {
+  const w = world();
+  w.G.Shop.give = (id, n) => { w.calls.give.push([id, n]); return 0; };
+  w.R.debugSpecial();
+  w.R.onEvent(['aw']);
+  assert.equal(w.calls.rolls, 1);
+  assert.equal(w.pl.wishFound, undefined);
+  assert.ok(!w.calls.dmgText.some(t => /^\+1 /.test(t)));
 });
 
 test('the real roll is always one of the three wish tickets', () => {
