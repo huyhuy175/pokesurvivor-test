@@ -29,7 +29,9 @@ Không module/bundler; mọi thứ treo trên đối tượng toàn cục `G`. T
 ## 4. Việc đã hoàn thành
 
 ### 4.1 Passive riêng cho từng Pokémon (xong)
-- Mỗi Pokémon có 1 passive riêng, mạnh theo độ hiếm; độ hiếm 4–5 có cơ chế độc nhất; tên/mô tả chỉ tiếng Anh. Dữ liệu sinh bởi `tools/gen_passives.js` + `tools/passive_design.json` → `js/data/passives.js`; mẫu hiệu ứng `js/data/passive-fx.js` (`G.PassiveFX`); áp dụng qua `js/data/ability-fx.js`, `js/systems/mons.js` (`abilityOf`).
+- Passive chia hai phần: **common** theo hệ chính (18 hệ, mạnh dần theo giai đoạn tiến hóa; `js/data/passives-common.js`) và **unique** theo từng dòng tiến hóa (≈511 dòng, mở khóa ở 3★ Rank; bậc basic/advanced/supreme, dòng hiếm có cơ chế mạnh hơn, dòng yếu số cao hơn một chút; hiệu ứng ở `js/data/passive-unique-fx.js`). Sao Rank 6/8/10 tăng sức mạnh unique. Dữ liệu unique sinh bởi `tools/gen_passives.js` (+ chỉnh tay trong `tools/passive_design.json`) → `js/data/passives.js`; mẫu hiệu ứng cũ `js/data/passive-fx.js` (`G.PassiveFX`); áp dụng qua `js/data/ability-fx.js`, `js/systems/mons.js` (`abilityOf`). Tên/mô tả chỉ tiếng Anh.
+- **Rank** (`G.Rank`, `save.dupes`): bản trùng trong gacha không trả xu đến bản thứ 15, mà tăng Rank 10 sao của cả dòng tiến hóa (5 sao vàng, rồi 5 sao đỏ; 15 bản để tối đa). Sao cho thưởng nhỏ HP/sát thương (≈+15%, cộng dồn với Prestige); từ bản thứ 16 hoàn xu trở lại. Sao Prestige đổi hiển thị thành ♦ (tránh nhầm với sao Rank).
+- **Vé wish** (3 vật phẩm hiếm trong Túi): Guarantee (kết quả cuối của ×10 là Pokémon chưa có), Type Pick (bốc ngẫu nhiên một hệ rồi chọn Pokémon chưa có thuộc hệ đó), Free Pick (chọn bất kỳ Pokémon chưa có). Rơi 80% / 15% / 5% từ **rift đặc biệt phút 25** (một lần mỗi ván): cổng tới đấu trường có huyền thoại Apex (mạnh hơn nhiều, bắn nhanh hơn), phải hạ trong 2 phút; thắng rơi 1 vé (mỗi người tự tung), thua không mất gì.
 - **Đã gỡ Ability Capsule** (không hoàn tiền); `js/data/shop.js` chỉ còn Mint + MT.
 - Passive của người chơi hoàn tác được (`passiveDelta`, `clearAbility`, `setAbility`) nên tiến hóa nhiều lần không cộng dồn.
 - Pause hiện passive của dạng hiện tại ("Tu pasiva", dưới Tus estadísticas).
