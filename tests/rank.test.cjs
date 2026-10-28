@@ -124,3 +124,57 @@ test('merge takes the max of dupes per dex', () => {
   const r = G.DB.merge(a, b);
   assert.deepEqual(r.dupes, { 4: 7, 6: 9, 1: 2 });
 });
+
+function gachaWorld() {
+  const G = rankWorld();
+  G.SPRITE_META = Object.fromEntries(G.DEX.map(p => [p.dex, 1]));
+  G.Sprites = { hasShiny: () => true };
+  G.U.pick = list => list[0];
+  G.DB.save = { dupes: {}, owned: {}, shiny: {}, coins: 0, tickets: { t1: 0, t10: 0 }, stats: {} };
+  new Function('G', source('js/systems/gacha.js'))(G);
+  // Un único candidato por tirada: fijamos el pool a un Pokémon
+  return G;
+}
+function pullOne(G, dex, shiny) {
+  const mon = G.DEX.find(p => p.dex === dex);
+  G.DEX.splice(0, G.DEX.length, mon);
+  G.Sprites.hasShiny = () => !!shiny;
+  if (shiny) G.Gacha.debugForceShiny(1);
+  G.DB.save.tickets.t1 = 10;
+  const gen = mon.gen, save = G.DB.save;
+  // pull(10) hace 10 tiradas; usamos las 10 como 10 repetidos
+  return { out: G.Gacha.pull(save, 10, gen), mon };
+}
+
+test('gacha: new mon has star 0 and no dupes; duplicates raise Rank without coins', () => {
+  const G = gachaWorld();
+  const { out, mon } = pullOne(G, 4, false);
+  assert.equal(out[0].isNew, true); assert.equal(out[0].star, 0); assert.equal(out[0].refund, 0);
+  assert.equal(G.Rank.dupesOf(4), 9);
+  assert.deepEqual(out.slice(1).map(r => r.star), [1, 2, 3, 4, 5, 0, 6, 0, 7]);
+  assert.ok(out.every(r => r.refund === 0));
+  assert.equal(G.DB.save.coins, 0);
+});
+
+test('gacha: the 16th duplicate refunds coins and keeps dupes at 15', () => {
+  const G = gachaWorld();
+  G.DB.save.dupes = { 4: 14 };
+  const { out, mon } = pullOne(G, 4, false);
+  assert.equal(G.Rank.dupesOf(4), 15);
+  const refunds = out.filter(r => r.refund > 0);
+  assert.ok(refunds.length >= 1);
+  assert.ok(refunds.every(r => r.refund === G.Gacha.REFUND[r.rarity] && r.star === 0));
+  assert.equal(G.DB.save.coins, refunds.length * G.Gacha.REFUND[mon.rarity]);
+});
+
+test('gacha: with the shiny already owned the pull falls back to a normal duplicate', () => {
+  const G = gachaWorld();
+  G.DB.save.owned[4] = { at: 1 }; G.DB.save.shiny[4] = { at: 1 };
+  const mon = G.DEX.find(p => p.dex === 4);
+  G.DEX.splice(0, G.DEX.length, mon);
+  G.Gacha.debugForceShiny(1);
+  G.DB.save.tickets.t1 = 10;
+  const out = G.Gacha.pull(G.DB.save, 10, mon.gen);
+  assert.equal(out[0].shiny, false); assert.equal(out[0].star, 1); assert.equal(out[0].refund, 0);
+  assert.equal(G.Rank.dupesOf(4), 10);
+});

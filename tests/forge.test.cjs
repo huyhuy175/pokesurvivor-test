@@ -19,7 +19,8 @@ function gachaWorld() {
   G.Sprites = { hasShiny: () => false };
   G.U.pick = a => a[Math.floor(Math.random() * a.length)];
   G.Moves = { BY_ID: {}, poolFor: () => [] };
-  for (const f of ['js/systems/mons.js', 'js/systems/gacha.js']) new Function('G', source(f))(G);
+  G.DB = { save: { dupes: {} }, commit() {} };
+  for (const f of ['js/systems/mons.js', 'js/systems/rank.js', 'js/systems/gacha.js']) new Function('G', source(f))(G);
   return G;
 }
 

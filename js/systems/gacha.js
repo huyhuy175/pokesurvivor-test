@@ -10,7 +10,8 @@
  *   Amuleto Iris de esa generación).
  * Amuleto Iris: uno por generación. Se tiene al completar su Pokédex (todos sus
  *   Pokémon, legendarios incluidos). No se guarda aparte: sale de lo que tienes.
- * Repetidos: se convierten en Pokémonedas (los shiny repetidos, el triple).
+ * Repetidos: suben el Rank de su línea (G.Rank, hasta 15 repetidos = 10★), sin
+ *   monedas. A partir del 16º se convierten en Pokémonedas (los shiny, el triple).
  *
  * Se tira con TICKETS (se consiguen jugando):
  *   ×1   1 ticket (ya sin botón: desde el 22-10-2026 se tira de 10 en 10 o de 100 en 100)
@@ -94,7 +95,8 @@ G.Gacha = (() => {
   /**
    * Hace `n` tiradas en el banner `gen` sobre el guardado `save` (lo modifica).
    * Devuelve null si no hay monedas, o la lista de resultados:
-   *   { dex, rarity, shiny, isNew, refund }
+   *   { dex, rarity, shiny, isNew, refund, star }
+   * (star = estrella nueva si este repetido ha subido el Rank, si no 0)
    * (y en .iris la generación si estas tiradas te han dado su Amuleto Iris).
    */
   function pull(save, n, gen = 1, use = 't1') {
@@ -135,19 +137,19 @@ G.Gacha = (() => {
         else shiny = false;
       }
 
-      let isNew = false, refund = 0;
+      let isNew = false, refund = 0, star = 0;
       if (shiny) {
         isNew = !save.shiny[mon.dex];
         if (isNew) save.shiny[mon.dex] = { at: Date.now(), from: 'gacha' };
-        else refund = REFUND[rarity] * 3;
+        else { const r = G.Rank.add(mon.dex); star = r.star; if (r.over) refund = REFUND[rarity] * 3; }
         if (!save.owned[mon.dex]) save.owned[mon.dex] = { at: Date.now(), from: 'gacha' };
       } else {
         isNew = !save.owned[mon.dex];
         if (isNew) save.owned[mon.dex] = { at: Date.now(), from: 'gacha' };
-        else refund = REFUND[rarity];
+        else { const r = G.Rank.add(mon.dex); star = r.star; if (r.over) refund = REFUND[rarity]; }
       }
       save.coins += refund;
-      out.push({ dex: mon.dex, rarity, shiny, isNew, refund });
+      out.push({ dex: mon.dex, rarity, shiny, isNew, refund, star });
     }
     save.stats.pulls = (save.stats.pulls || 0) + n;
     out.iris = !hadIris && hasIris(save, gen) ? gen : 0;
