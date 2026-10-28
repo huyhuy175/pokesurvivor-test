@@ -253,7 +253,7 @@ G.AbilityFX = (() => {
   /** Pasiva genérica: +8 % con los movimientos de su tipo principal. */
   function generic(mon) {
     const t = mon.types[0];
-    return { generic: true, d: '+8 % de daño con movimientos de tipo ' + TN(t) + '.', out: (pl, m) => (m.type === t ? 1.08 : 1) };
+    return { generic: true, d: '+8% damage with ' + (G.T ? G.T(TN(t)) : TN(t)) + ' moves.', out: (pl, m) => (m.type === t ? 1.08 : 1) };
   }
 
   /**

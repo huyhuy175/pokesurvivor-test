@@ -10,7 +10,7 @@
  * Los estados (rachas, contadores) viven en el jugador `pl`, que se recrea en cada run.
  */
 G.PassiveFX = (() => {
-  const TN = t => (G.U.TYPE_NAME && G.U.TYPE_NAME[t]) || t;
+  const TN = t => { const n = (G.U.TYPE_NAME && G.U.TYPE_NAME[t]) || t; return G.T ? G.T(n) : n; };
   const low = pl => pl.hp < pl.maxHp / 3;
   const t1 = mon => mon.types[0];
   const t2 = mon => mon.types[1] || mon.types[0];

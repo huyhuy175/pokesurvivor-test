@@ -1115,5 +1115,5 @@ G.I18n.add({
   'No hay reportes.': 'No reports.', 'No hay cuentas baneadas.': 'No banned accounts.',
   '¿Banear a {x}? No podrán volver a salir en el ranking y se borra su marca.': 'Ban {x}? They will no longer appear on the leaderboard and their entry is deleted.',
   'ya no está en el top 50': 'no longer in the top 50', 'sólo': 'only', 'No se pudo: {x}': 'Failed: {x}',
-  'Hoy': 'Today', 'Semana': 'Week', 'Mes': 'Month'
+  'Pasiva': 'Passive', 'Hoy': 'Today', 'Semana': 'Week', 'Mes': 'Month'
 }, 'en');

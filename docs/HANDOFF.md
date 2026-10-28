@@ -4,19 +4,19 @@
 
 ## 1. Luật làm việc (từ CLAUDE.md và thực tế phiên này)
 
-- Sửa **`dev.html`**, không bao giờ sửa file sinh ra: `index.html`, `js/app.min.js`, `js/lang/`, `version.json`. Hiện các file này **là bản cũ** (chưa chứa tính năng mới).
-- Không commit/push trừ khi chủ dự án yêu cầu. Thư mục là git repo (nhánh `main`). Commit (nếu có) không ghi "Co-Authored-By" hay chữ ký AI (theo CLAUDE.md).
+- Sửa **`dev.html`**, không bao giờ sửa file sinh ra: `index.html`, `js/app.min.js`, `js/lang/`, `version.json`. Bản build hiện tại (commit `d761fef`, đã lên GitHub Pages bản thử) **đã chứa** Mega materials, Gemas/Prestigio và thẻ tiến hóa; sau mỗi thay đổi phải build lại.
+- Không commit/push trừ khi chủ dự án yêu cầu. Thư mục là git repo; nhánh làm việc hiện tại là `test-deploy` (không có upstream; xem mục 9 cho cách deploy và revert). Commit (nếu có) không ghi "Co-Authored-By" hay chữ ký AI (theo CLAUDE.md).
 - Không bật Firebase Identity Platform, không thêm gì tính phí (Cloudflare Worker/TURN đã bỏ).
 - Chuỗi giao diện mới: tiếng Tây Ban Nha trong code; tiếng Anh vào `js/data/lang-en.js`; game chỉ còn tiếng Anh (đã bỏ es/fr/it/pt/zh, `lang-updates.js`, `js/lang/`, `build_langs.js`). Chuỗi mới: khóa tiếng Tây Ban Nha → tiếng Anh trong `lang-en.js`. Chuỗi có số dùng `{x}` và `G.I18n.f(es, ...vals)`.
 - Changelog: `js/data/changelog.js`, es + en, mục `new`/`chg`/`fix` của ngày hiện tại. Hiện có mục `2026-10-27` (passive, tiến hóa, pause) và `2026-10-28` (Lò Tiến Hóa, thẻ mới/độ hiếm, độ khó…). Không ghi thay đổi server/DB/chi phí.
-- Thêm file JS mới: đưa vào khối `<!-- scripts:begin/end -->` của `dev.html` đúng thứ tự tải; nếu bắt buộc thì thêm vào `NEED` ở `js/main.js` (đã có `'PassiveFX','Evo','Forge'`).
+- Thêm file JS mới: đưa vào khối `<!-- scripts:begin/end -->` của `dev.html` đúng thứ tự tải; nếu bắt buộc thì thêm vào `NEED` ở `js/main.js` (đã có `'PassiveFX','Evo','Mega','MegaMats','Forge','Prestige','PrestigeUI'`).
 - `build.js` cần `util.js` chứa đúng `window.G = window.G || {};`.
-- Phát hành (chỉ khi chủ yêu cầu): `node tools/build.js && node tools/export_data.js && python tools/make_seo_pages.py` (máy này **không có Python**; bước SEO bỏ qua hoặc làm ở máy khác).
+- Phát hành (chỉ khi chủ yêu cầu): `node tools/build.js && node tools/export_data.js && python tools/make_seo_pages.py` (Python 3.12 đã cài nhưng **chưa nằm trong PATH** của shell Claude: gọi `C:/Users/huyhu/AppData/Local/Programs/Python/Python312/python.exe tools/make_seo_pages.py`).
 
 ## 2. Cách chạy và kiểm tra
 
 - Chơi/gỡ lỗi: mở `dev.html` (thêm `?dev` để vào khi bảo trì). Thử nhanh: `G.DB.grant(4,'gacha')` (có Charmander), `G.DB.save.shards=200`, `G.Game.debugLevelUp()`.
-- Test: `node --test tests/*.cjs` (Node 24 cần glob, không dùng `tests/`). Hiện **179/179 pass**. Một file: `node --test tests/forge.test.cjs`.
+- Test: `node --test tests/*.cjs` (Node 24 cần glob, không dùng `tests/`). Hiện **224/224 pass**. Một file: `node --test tests/forge.test.cjs`.
 - Build thử: sao lưu `index.html`, `js/app.min.js`, `version.json`, `js/lang/` → `node tools/build.js --expose --sin-seo` → **khôi phục bản cũ** (bản `--expose` không được ofuscar). Đã làm nhiều lần, luôn khôi phục.
 - Mô phỏng cân bằng: `node tests/helpers/balance-sim.cjs`.
 - Bẫy khi sửa file: nhiều file là **CRLF**, một số là LF (ví dụ `progress.js`, `menu.js`, `evolution.js` là LF). Regex có `\n` hay thay chuỗi nhiều dòng dễ **thất bại âm thầm**. Cách an toàn: script Node đọc file, nhận biết CRLF/LF, thay chuỗi **duy nhất** rồi grep/test lại. Script tạm `edit.cjs` nằm trong thư mục scratchpad của phiên (có thể mất) — viết lại: `edit(file, [[cũ, mới]])` chuẩn hóa xuống dòng theo file và báo lỗi nếu chuỗi cũ không duy nhất.
@@ -62,10 +62,34 @@ Không module/bundler; mọi thứ treo trên đối tượng toàn cục `G`. T
 - **94 dạng Mega** (gồm Mega mới Legends Z-A) sinh bởi `tools/fetch_mega.js` (PokeAPI, cache `tools/cache/mega.json`) → `js/data/mega.js`: `G.MEGA_DEX` (dex ≥ 10000, **không** nằm trong `G.DEX`), `G.MEGA[base]`, `G.MEGA_FROM[mega]`, `G.isMega(dex)`, gộp vào `G.DEX_BY`. Chỉ số = max(dạng gốc, Mega); passive = passive dạng gốc. Mega không vào gacha, không làm compañero (`isBase` sai); không tính vào Pokédex/thành tựu/yêu thích hồ sơ.
 - **Cristales Mega** theo hệ: `save.cry[type]`, khóa sổ cái `x:<tipo>` (trần 1e9). Nguồn: boss 1 (hệ đầu của boss), rương lớn 1 (một hệ của Pokémon), nhiệm vụ tuần 2 (`reward.megaCry` trong `missions.js`; boss không có Pokémon trong Pokédex rơi hệ ngẫu nhiên). Lưu ngay; màn kết thúc có dòng "Mega Crystals".
 - **Lò**: tab Mega (`G.Forge.offersMega/buyMega/megaCost`): 8 tinh thể nếu một hệ, 6+6 nếu hai hệ; Mảnh 400 (X/Y: 450). Cần có dạng gốc.
-- **Trong ván** (`js/systems/mega.js`, `G.Mega`): cấp **36** + Đá Mega (rơi như Đá Tiến Hóa) → thẻ `mevo` (`game.js: offerEvolution` xử lý Evo hoặc Mega). `Player.megaUp/clearMega`: stats Mega + thưởng cố định `BONUS` (+15% sát thương, +20% máu và hồi 25%, +8% tốc độ, +10% chí mạng), không cộng dồn, hoàn tác được.
+- **Trong ván** (`js/systems/mega.js`, `G.Mega`): cấp **36** + Đá Mega (rơi như Đá Tiến Hóa) → thẻ `mevo` trong màn lên cấp (từ 2026-10-28 tối; xem 4.9, không còn tự kích hoạt). `Player.megaUp/clearMega`: stats Mega + thưởng cố định `BONUS` (+15% sát thương, +20% máu và hồi 25%, +8% tốc độ, +10% chí mạng), không cộng dồn, hoàn tác được.
 - **Sprite**: Mega chưa có sprite riêng dùng `sheetDex` (hoàn toàn theo dạng gốc) + aura hồng (`isFallback`). Thêm sprite thật: `docs/MEGA_ASSETS.md`. Chưa có bộ tải SpriteCollab tự động.
 - Co-op dùng lại sự kiện `evo` (dex ≥ 10000). Mọi chuỗi Mega **chỉ tiếng Anh** (dòng changelog đánh dấu `'en-only'`, test i18n bỏ qua).
 - Ước tính cần chỉnh sau khi chơi thử: `Mega.LEVEL` 36, `BONUS`, tỉ lệ rơi đá `ENEMY_DROP`, giá `Forge.MEGA_SHARDS/MEGA_CRYSTALS`, `WEEKLY_CRYSTALS`. Sau mỗi chỉnh chạy `tests/balance.test.cjs`.
+
+### 4.7 Materiales Mega (xong, chưa chơi thử trên giao diện)
+- Spec `docs/superpowers/specs/2026-10-28-mega-materials-design.md`; plan `docs/superpowers/plans/2026-10-28-mega-materials.md`.
+- 18 vật liệu, một cho mỗi hệ, trong Mochila (`save.bag`) với id `mat<hệ>` (`matfire`, `matfighting`…). **Không dùng gạch dưới**: sổ cái chỉ nhận `^b:[a-z0-9]{1,12}$`. Định nghĩa ở `js/data/mega-mats.js` (`G.MegaMats`: `TYPES, id, typeOf, name, color, dot`), nạp **trước** `data/shop.js` (shop gộp chúng vào `ITEMS` để `sanitize` không xóa; `ORDER` vẫn chỉ có Mint). Icon: chấm màu theo hệ (`MegaMats.dot`), không có sprite mới.
+- **Lò → tab Mega**: ngoài Mảnh và Cristales còn cần vật liệu cùng hệ (`Forge.MEGA_MATS = { one: 5, two: 3 }`). `megaCost` trả thêm `mats`; `buyMega` kiểm tra hết rồi mới trừ (thiếu vật liệu thì không trừ gì, `reason: 'mats'`).
+- **Rơi** (`systems/mega.js`, `MAT_DROP`): quái thường 0,4% (1 cái, hệ đầu của nó), boss 2–3 (hệ đầu; boss không có Pokémon thì hệ ngẫu nhiên, cùng hệ với Cristal), rương lớn 1–2 (một hệ của Pokémon). Lưu ngay (`Shop.give` trả số thực sự thêm; túi đầy 999 thì không đếm/không báo). Màn kết thúc có dòng "Mega Materials".
+- **Shop Kecleon**: mục "Mega Materials" xoay theo ngày (`Shop.dailyMats()`, 5 hệ, seed `kecleon:mats:<ngày>`, luôn có hệ chính của compañero), giá `MAT_PRICE = 600`. `Shop.buy('mat:<hệ>')`; id trần (`matfire`) bị từ chối. Túi đầy 999 thì không trừ xu (cả Mint/MT).
+
+### 4.8 Gemas y Prestigio (xong, chưa chơi thử trên giao diện)
+- Spec `docs/superpowers/specs/2026-10-28-gems-prestige-design.md`; plan `docs/superpowers/plans/2026-10-28-gems-prestige.md`.
+- **Gemas**: `save.gems` (≤ 1e9), khóa sổ cái `g`, icon `gem`, hiện trên thanh trên cùng và màn kết thúc. Nguồn: nhiệm vụ ngày `boss/survive/level` +1, nhiệm vụ tuần +3, thành tựu bậc 2 +1 và bậc 3 +3 (`leg_*` không), boss 1–2 (lưu ngay), quái thường 0,03%.
+- **Nivel permanente** (`js/systems/prestige.js`, `G.Prestige`): `save.plv[dex gốc] = { xp, star }`, khóa theo **dạng gốc** (`rootOf` = `lineage[0]` hoặc chính dex nếu đã là dạng gốc; Mega/tiến hóa về dạng gốc, `fixPartner` gộp `plv` như `pupg`). EXP tích lũy cho cấp L = `6·(L−1)·L`; giới hạn cấp = `30 + 10·star`; tối đa 5 sao. EXP mỗi ván = `time/10 + kills/20 + bosses·15 + level` (cộng ở `endRun`, màn kết thúc hiện EXP).
+- **Bonus** = `1 + 0,005·(cấp−1) + 0,10·star` cho cả sát thương và máu (Pokémon mới đúng ×1). `Prestige.apply(perks, mon)` chỉnh `atkMul` và `perks.hp` ở `startRun` (không sửa `Player`).
+- **Prestigio**: đủ giới hạn cấp + `50·(star+1)` gemas → cấp 1, `xp = 0`, +1 sao, giới hạn +10. UI: `js/ui/prestige-ui.js` (`G.PrestigeUI.panel`), đặt trên cùng màn Mejoras (nút bị khóa khi thiếu gemas).
+
+### 4.9 Evolución y Mega como carta al subir de nivel (xong)
+- Trước đây `game.js: offerEvolution` chạy mỗi khung hình và tự tiến hóa. **Đã xóa** (cùng `evoOpen`, `Evo.evolveNow`, `Mega.megaNow`). Giờ `LevelUp.offer` (`levelup.js: formCards`) luôn thêm một thẻ `mevo` cho mỗi dạng đích (tối đa 5, luôn chừa ít nhất 1 thẻ thường); tiến hóa thường ưu tiên, Mega chỉ khi không còn tiến hóa thường. Chọn thẻ thì `apply` tiến hóa, tiêu đá và gọi `celebrate`; không chọn thì đá giữ và thẻ hiện lại ở lần lên cấp sau. Sprite được nạp trước khi hiện thẻ. Reroll dùng được (đã bỏ chặn `mevo` trong `run-ui.js`). Co-op: mỗi máy tự tạo thẻ của mình, nên bỏ logic giữ riêng.
+- Hệ quả: đá rơi khi người chơi đang ở cấp cao thì phải chờ lần lên cấp kế.
+- Test: `tests/evo-choice.test.cjs`, `tests/mega-materials.test.cjs`, `tests/prestige.test.cjs`.
+
+### 4.10 Ping co-op (xong, commit 7305ebe, chưa chơi thử với người thật)
+- `js/net/net.js`: mỗi 2 s mỗi bên gửi JSON `{k:'ping',t}` qua kênh WebRTC, bên kia trả `{k:'pong',t}`; xử lý trong `wireChannel` (không qua `deliver`, `coop.js` không thấy). API: `G.Net.ping(uid)` (ms đã làm mượt 0,7/0,3; `null` nếu chưa đo, không phải `direct` hoặc quá 8 s không có pong), `G.Net.onPing(fn)`, `G.Net.pingColor(ms)` (xanh <80, vàng <160, đỏ). Vòng ping dùng chuỗi `setTimeout` (không `setInterval`) vì `tests/net.test.cjs` chỉ giả lập `setTimeout`; dùng `setInterval` làm test treo.
+- Chỉ đo host ↔ khách (topology hình sao): host thấy ping từng khách, khách chỉ thấy ping của mình tới host. Client cũ không trả lời → không có số, không lỗi.
+- UI: phòng chờ (`social-ui.js`: `updateConn/pingOf`, chỉ cập nhật chữ, không dựng lại thẻ) và HUD (`hud.js: drawCoop`: host thấy ms cạnh thanh máu đồng đội, khách thấy dòng "Ping N ms"). Không có chuỗi cần dịch. Test: `tests/ping.test.cjs` (6 test); giao thức ở `docs/MULTIPLAYER_PROTOCOL.md`.
 
 ### 4.5 Khác
 - Menu Kecleon: bỏ chữ "Cápsulas" ở `dev.html`. (Vẫn còn vài **comment** nhắc Cápsulas trong code — vô hại.)
@@ -84,8 +108,11 @@ Không module/bundler; mọi thứ treo trên đối tượng toàn cục `G`. T
 4. **Sprite Mega thật** (có thể làm tiếp): chưa có bộ tải; phải kiểm tra cấu trúc thư mục SpriteCollab trước rồi viết `tools/fetch_mega_sprites.js`. Đường thủ công: `docs/MEGA_ASSETS.md`.
 5. **Đa dạng hóa chiêu** (sau, cần brainstorm → spec → plan riêng): bậc nâng cấp riêng cho từng chiêu + hiệu ứng phụ theo hệ; **không** thêm `kind` mới, **không** cân lại các `kind`.
 6. **Minor còn lại (chủ dự án quyết định không sửa)**: `Player.clearMega` chưa có nơi gọi (vô hại); client cũ xóa Mega đã mở khóa khỏi `owned` trong lúc phát hành (cửa sổ rollout ngắn).
-7. Phát hành khi chủ yêu cầu: `node tools/build.js && node tools/export_data.js` + `python tools/make_seo_pages.py` (máy này không có Python → làm bước SEO ở máy khác). Hiện ~35 file Mega chưa commit (chưa ai yêu cầu commit). Commit không ký AI theo CLAUDE.md.
-8. **Thứ tự đề xuất cho phiên sau**: (1) chủ dự án chơi thử, báo số cần chỉnh → (2) chỉnh số + chạy `tests/balance.test.cjs`, `tests/difficulty.test.cjs` → (3) commit/phát hành nếu chủ yêu cầu → (4) sprite Mega hoặc đa dạng hóa chiêu.
+7. Phát hành khi chủ yêu cầu: `node tools/build.js && node tools/export_data.js` + `python tools/make_seo_pages.py` (xem mục 1 về đường dẫn Python). Commit không ký AI theo CLAUDE.md. **Bản thử đã deploy 2026-10-28** (commit `d761fef`); cách deploy và revert ở mục 9.
+8. **Chơi thử bản live (chưa ai làm)** ngoài danh sách Mega ở trên: Lò tab Mega có dòng vật liệu (đủ thì sáng, thiếu thì đỏ); shop mục "Mega Materials" + Mochila; mua khi túi đầy 999; màn kết thúc có dòng Materials/Gems/EXP; thanh trên cùng có icon gem; Mejoras có panel Prestige (nhấn Prestige khi đủ gemas); lên cấp có thẻ tiến hóa/Mega, bỏ qua thẻ rồi lên cấp tiếp, reroll, co-op.
+9. **Tinh chỉnh số (đều là ước tính)**: `Forge.MEGA_MATS`, `Mega.MAT_DROP`, `Shop.MAT_PRICE`/`DAILY_MATS`, `Prestige` (`XP_K`, `LV_BASE/LV_STEP/MAX_STAR`, `LV_BONUS/STAR_BONUS`, `GEMS_BASE`, `GEM_DROP`), gemas trong `missions.js`/`achievements.js`.
+10. **Minor còn lại (đã biết, chưa sửa)**: HP bonus của Prestige lệch nhẹ khi tiến hóa giữa ván (`Player.evolve` giữ `hpDiff` tuyệt đối); `commit('run')` gọi tới 4 lần khi diệt boss; chữ nổi khi nhặt đá chưa nói "chọn ở lần lên cấp tới"; hai thiết bị offline có thể cùng tiêu một vật liệu/gemas cho hai thứ khác nhau (bản chất của sổ cái, giống Cristales).
+11. **Thứ tự đề xuất cho phiên sau**: (1) chủ dự án chơi thử, báo số cần chỉnh → (2) chỉnh số + chạy `tests/balance.test.cjs`, `tests/difficulty.test.cjs` → (3) commit/phát hành nếu chủ yêu cầu → (4) sprite Mega hoặc đa dạng hóa chiêu.
 
 ## 6. Quyết định (rulings) và điểm chấp nhận
 
@@ -97,12 +124,28 @@ Không module/bundler; mọi thứ treo trên đối tượng toàn cục `G`. T
 - Mítica có hai kiểu; thẻ Común yếu hơn trước (bù bằng thẻ thứ 4 và độ hiếm), tổng hệ mới ≈ +17% ở cấp 30, bù bằng độ khó cuối ván.
 - Chấp nhận (reviewer nêu, không sửa): tab chạy phiên bản cũ ghi đè save có thể nhân đôi mảnh (chỉ khi hai phiên bản chạy song song sau khi phát hành); người ngã trong co-op không nhận mảnh từ boss nhưng vẫn nhận từ rương; mua Lò làm đủ Pokédex một thế hệ không có thông báo Amuleto Iris riêng; sprite đồng đội đã ngã có thể hiện Idle trong vài giây sau khi tiến hóa; baby (Pikachu, Clefairy, Jigglypuff, Marill, Roselia, Chansey…) cần cấp 24 cho lần tiến hóa đầu; dạng khu vực (Meowth→Perrserker, Scyther→Kleavor) tính như tiến hóa thường; cân bằng passive Reshiram là điểm lệch.
 - Mốc `LEVELS`, giá, mảnh, độ hiếm, `LATE` đều là **ước tính**.
+- **Rủi ro phiên bản lẫn lộn (chủ dự án chấp nhận 2026-10-28, vì game ít người)**: client cũ còn chạy giữa ván có thể tải save lên và `sanitize` cũ xóa `matfire`… khỏi Mochila, ghi nhận là đã tiêu → vật liệu về 0 vĩnh viễn trên mọi thiết bị. Gemas/`plv` hồi phục phần lớn. Đã đề xuất bật `MAINTENANCE` hai lượt hoặc lưu vật liệu ngoài `save.bag`; chủ dự án chọn **không làm**. Nếu có người báo mất vật liệu ngay sau bản này, đây là nguyên nhân.
+- Bonus Prestige dùng `cấp − 1` (spec ghi "mỗi cấp"): Pokémon mới đúng ×1 thay vì tặng +0,5% ở Lv1.
+- `Shop.buy` từ chối id vật liệu trần (`matfire`) vì `ITEMS` đã chứa chúng và sẽ lách kiểm tra "bán hôm nay".
+- Spec/plan của lượt này nằm ở `docs/superpowers/` như các lượt trước (theo quy ước repo).
 
 ## 7. Bản đồ file đã tạo/sửa chính
 
 Mới: `js/data/passive-fx.js`, `passives.js` (sinh), `evolutions.js` (sinh), `js/systems/evolution.js`, `js/systems/forge.js`, `js/ui/forge-ui.js`, `tools/gen_passives.js`, `tools/passive_design.json`, `tools/fetch_evolutions.js`, `tests/{passives,evolution,forge,stats,balance,difficulty}.test.cjs`, `tests/helpers/balance-sim.cjs`, specs/plans trong `docs/superpowers/`.
+Mới (28-10 tối): `js/data/mega-mats.js`, `js/systems/prestige.js`, `js/ui/prestige-ui.js`, `tests/{evo-choice,mega-materials,prestige}.test.cjs`. Cũng sửa: `js/systems/{levelup,mega,evolution,forge}.js`, `js/data/shop.js`, `js/ui/{forge-ui,shop-ui,run-ui,menu}.js`, `js/core/db.js` (khóa `g`, `plv`).
 Sửa: `js/core/db.js` (sổ cái `sh`, `fixPartner`, `sanitize`), `js/entities/player.js`, `js/game.js`, `js/systems/{levelup,combat,gacha,mons,progress}.js`, `js/data/{enemies,missions,achievements,shop,ability-fx,changelog,lang-en,lang-updates}.js`, `js/ui/{menu,run-ui,gacha-ui,ui,icons,shop-ui}.js`, `js/net/coop.js`, `js/main.js`, `dev.html`, `css/style.css`, `docs/MULTIPLAYER_PROTOCOL.md`.
 
 ## 8. Quy trình đã dùng
 
 Brainstorm → spec (`docs/superpowers/specs`) → plan (`docs/superpowers/plans`) → thực thi "native" (tự làm từng task, test viết trước) → reviewer độc lập một lần ở cuối → một đợt sửa lỗi. Việc nhỏ trong luồng có sẵn: trình bày thiết kế ngắn, chờ đồng ý rồi làm. Giao tiếp với chủ dự án bằng tiếng Việt.
+
+## 9. Deploy bản thử lên GitHub Pages và revert
+
+- Remote `origin` = `huyhuy175/pokesurvivor-main` (fork, `main` ở bản cũ `5d499d2`). Remote **`test`** = `huyhuy175/pokesurvivor-test` là nơi chạy GitHub Pages bản thử (`https://huyhuy175.github.io/pokesurvivor-test/`, Firebase riêng `pokemoon-survi`). Nhánh làm việc `test-deploy` được đẩy lên **`main` của remote `test`**.
+- Quy trình đã dùng: test xanh → `node tools/build.js && node tools/export_data.js` + `make_seo_pages.py` → commit (không ký AI) → `git push test test-deploy:main` (fast-forward, không force) → kiểm tra `.../version.json` trả về mã mới (mất ~1 phút).
+- **Khác biệt của `test-deploy` so với `main`** (đừng gộp bừa): xóa `CNAME` (không tranh `pokesurvivor.com`), xóa `.github/` (token `gh` thiếu scope `workflow`, push bị từ chối), `js/core/firebase-config.js` + `.firebaserc` trỏ `pokemoon-survi`, `HOSTS` trong `js/core/db.js` có thêm `huyhuy175.github.io` (không có thì game ở host lạ chỉ chạy local, không đăng nhập/co-op), build dùng `--sin-seo`. Rules Firestore/RTDB đã đẩy bằng `npx firebase-tools deploy --only firestore,database --project pokemoon-survi`. Cần `huyhuy175.github.io` trong Firebase Authentication → Authorized domains. `gh` CLI đã cài (`C:\Program Files\GitHub CLI`, có thể phải mở terminal mới để có trong PATH) và đã đăng nhập tài khoản `huyhuy175`.
+- **Co-op có thể không nối được**: chỉ có STUN của Google; `net.js` vẫn gọi `ice.pokesurvivor.com` (TURN đã gỡ) nên bỏ qua. Mạng 4G/CGNAT có thể thất bại (lỗi kết nối, không phải lag). Hướng nếu xảy ra: thêm TURN miễn phí vào `iceServers` (chưa làm; cần chủ dự án đồng ý vì CLAUDE.md cấm thêm thứ trả phí).
+- **Bản thử đã chạy** (2026-10-28) gồm Mega + ping + bản chỉ tiếng Anh + Materials/Gems/Prestige; chưa ai chơi thử ping và Mega với 2 người thật.
+- **Sao lưu**: tag `backup-before-mega-gems` (annotated) trỏ vào `15d5628`, bản chạy trước đợt này; có trên máy và trên remote `test`.
+- **Revert**: `git revert d761fef && git push test test-deploy:main` (giữ lịch sử). Nhanh hơn nhưng ghi đè: `git push --force test backup-before-mega-gems:main`.
+- Revert code **không** hoàn tác dữ liệu trên Firebase `pokemoon-survi`: save đã có `gems`, `plv`, vật liệu trong `bag`; bản cũ sẽ xóa vật liệu khi `sanitize`. Muốn bản dữ liệu để khôi phục thì xuất Firestore ở Firebase console trước (Claude không làm được).
