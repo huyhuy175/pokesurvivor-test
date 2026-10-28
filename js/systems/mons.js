@@ -78,11 +78,19 @@ G.Mons = (() => {
     const mon = G.DEX_BY[dex];
     if (!mon) return { id: String(dex), name: '', desc: '', slot: 0, unique: { name: '', desc: '', locked: true }, sig: null };
     const fx = G.AbilityFX.of(mon), p = G.AbilityFX.parts(mon), u = p.unique;
-    const sg = G.SIG_OF ? G.SIG_OF(dex) : null;             // movimiento especial de la especie (Rank 5★)
+    let sg = G.SIG_OF ? G.SIG_OF(dex) : null, via = null;   // movimiento especial de la especie (Rank 5★)
+    if (!sg && G.SIG_OF && G.EVO) {                         // forma sin move propio: enseña el de la línea (lo usará al evolucionar)
+      const seen = new Set([dex]), q = [dex];
+      while (q.length && !sg) for (const n of G.EVO[q.shift()] || []) if (!seen.has(n)) {
+        seen.add(n); q.push(n);
+        const f = G.SIG_OF(n);
+        if (f) { sg = f; via = G.DEX_BY[n] && G.DEX_BY[n].name; break; }
+      }
+    }
     return {
       id: String(dex), name: fx.name || '', desc: fx.d, slot: 0,
       unique: { name: u ? u.n : '', desc: u ? G.PassiveFX.build(u, mon).d : '', locked: !p.on },
-      sig: sg ? { name: sg.name, desc: sg.desc, rare: sg.rare, locked: !(G.Rank && G.Rank.starsOf(dex) >= 5) } : null
+      sig: sg ? { name: sg.name, desc: sg.desc, rare: sg.rare, via, locked: !(G.Rank && G.Rank.starsOf(dex) >= 5) } : null
     };
   }
 

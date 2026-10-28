@@ -381,13 +381,17 @@ function monsGame(stars) {
 test('abilityOf reports the signature move of the species, locked below 5 stars', () => {
   const G = monsGame({ 150: 4, 6: 5 });
   const mt = G.Mons.abilityOf(150).sig;
-  assert.deepEqual(Object.keys(mt).sort(), ['desc', 'locked', 'name', 'rare']);
+  assert.deepEqual(Object.keys(mt).sort(), ['desc', 'locked', 'name', 'rare', 'via']);
+  assert.equal(mt.via, null);
   assert.equal(mt.name, 'Psystrike');
   assert.equal(mt.locked, true);
   assert.equal(mt.rare, 'legend');
   assert.equal(G.Mons.abilityOf(6).sig.locked, false);
   assert.equal(G.Mons.abilityOf(6).sig.rare, 'mega');
-  assert.equal(G.Mons.abilityOf(1).sig, null, 'Bulbasaur has none');
+  const base = G.Mons.abilityOf(1).sig;
+  assert.equal(base.name, G.Mons.abilityOf(3).sig.name, 'Bulbasaur shows the move of its line');
+  assert.equal(base.via, 'Venusaur');
+  assert.equal(G.Mons.abilityOf(19).sig, null, 'Rattata line has none');
   assert.equal(G.Mons.abilityOf(99999).sig, null);
 });
 
@@ -405,7 +409,8 @@ test('the Pokédex sheet shows the signature move: dimmed with a hint when locke
   assert.match(open, /<span>Signature<\/span><b class="u5" translate="no">Psystrike<\/b>/);
   assert.doesNotMatch(open, /Unlocks at 5/);
   assert.match(mega, /<span>Signature<\/span><b translate="no">Inferno Charge<\/b>/, 'only legends are gold');
-  assert.equal((mk(5)(1).match(/Signature/g) || []).length, 0, 'species without a move show nothing');
+  assert.match(mk(4)(1), /Unlocks at 5★ · on Venusaur/);
+  assert.equal((mk(5)(19).match(/Signature/g) || []).length, 0, 'species without a move show nothing');
 });
 
 test('the move icon gets a star for signature moves and a teammate with an unknown move is ignored', () => {

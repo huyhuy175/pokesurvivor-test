@@ -12,7 +12,12 @@
 G.SigFX = (() => {
   const colorOf = m => (G.U.TYPE_COLOR && G.U.TYPE_COLOR[m.type]) || '#ffffff';
   const near = (x, y, r, except) => (G.EnemyMgr ? G.EnemyMgr.queryCircle(x, y, r) : []).filter(o => o !== except && !o.dead);
-  const extra = (e, m, dmg, from) => { if (dmg > 0) e.hurt(dmg, colorOf(m), e.x - from.x, e.y - from.y, 0); };
+  const extra = (pl, e, m, dmg, from) => {
+    if (!(dmg > 0)) return;
+    e.hurt(dmg, colorOf(m), e.x - from.x, e.y - from.y, 0);
+    pl.dmgDealt = (pl.dmgDealt || 0) + dmg;                       // cuenta en las estadísticas
+    m.dealt = (m.dealt || 0) + dmg;
+  };
 
   /** Cada tercer lanzamiento da un potenciador de su estadística, con la potencia `base × v / 100`. */
   const surge = (stat, base) => ({
@@ -41,12 +46,12 @@ G.SigFX = (() => {
 
   const FX = {
     splash: { min: 30, max: 60, text: v => `Hits splash to nearby foes for ${v}% damage.`,
-      onHit(pl, e, m, dmg, v) { if (!proc(pl, 'splash', 0.2)) return; for (const o of near(e.x, e.y, 70, e)) extra(o, m, dmg * v / 100, e); } },
+      onHit(pl, e, m, dmg, v) { if (!proc(pl, 'splash', 0.2)) return; for (const o of near(e.x, e.y, 70, e)) extra(pl, o, m, dmg * v / 100, e); } },
     chain: { min: 25, max: 50, text: v => `Jumps to up to two nearby foes for ${v}% damage each.`,
       onHit(pl, e, m, dmg, v) {
         if (!proc(pl, 'chain', 0.2)) return;
         const t = near(e.x, e.y, 160, e).sort((a, b) => Math.hypot(a.x - e.x, a.y - e.y) - Math.hypot(b.x - e.x, b.y - e.y)).slice(0, 2);
-        for (const o of t) extra(o, m, dmg * v / 100, e);
+        for (const o of t) extra(pl, o, m, dmg * v / 100, e);
       } },
     drain: { min: 2, max: 6, text: v => `Heals you for ${v}% of the damage dealt (at most 2% of your health per hit and 3% per second).`,
       onHit(pl, e, m, dmg, v) {
@@ -55,9 +60,9 @@ G.SigFX = (() => {
         if (h > 0) { w.n += h; pl.heal(h, true); }                  // sin números: con un aura serían cientos
       } },
     bossbane: { min: 30, max: 70, text: v => `Deals ${v}% extra damage to bosses.`,
-      onHit(pl, e, m, dmg, v) { if (e.boss) extra(e, m, dmg * v / 100, pl); } },
+      onHit(pl, e, m, dmg, v) { if (e.boss) extra(pl, e, m, dmg * v / 100, pl); } },
     execute: { min: 40, max: 100, text: v => `Deals ${v}% extra damage to foes below 30% health.`,
-      onHit(pl, e, m, dmg, v) { if (e.maxHp > 0 && e.hp / e.maxHp < 0.3) extra(e, m, dmg * v / 100, pl); } },
+      onHit(pl, e, m, dmg, v) { if (e.maxHp > 0 && e.hp / e.maxHp < 0.3) extra(pl, e, m, dmg * v / 100, pl); } },
     slow: { min: 20, max: 50, text: v => `Slows foes by ${v}%.`,
       onHit(pl, e, m, dmg, v) { e.applySlow(v / 100); } },
     knock: { min: 80, max: 200, text: v => `Knocks foes away from you.`,
@@ -77,7 +82,7 @@ G.SigFX = (() => {
 
   /** Lo que vale cada mecánica en potencia nominal (≥ 1; sube con v). */
   const POWER = {
-    splash: v => 1 + v / 100 * 0.5, chain: v => 1 + v / 100, drain: v => 1 + v / 100 * 0.6, bossbane: v => 1 + v / 100 * 0.3,
+    splash: v => 1 + v / 100 * 0.5, chain: v => 1 + v / 100, drain: v => 1 + v / 100 * 0.6, bossbane: v => 1 + v / 100 * 0.1,
     execute: v => 1 + v / 100 * 0.2, slow: v => 1 + v / 100 * 0.3, knock: v => 1 + v / 1000, pull: v => 1 + v / 800,
     stun: v => 1 + v / 100, burn: v => 1 + 0.1 * v, poison: v => 1 + 0.1 * v,
     surgeHaste: v => 1 + v / 100 * 0.1, surgeCrit: v => 1 + v / 100 * 0.1, surgeAtk: v => 1 + v / 100 * 0.1
