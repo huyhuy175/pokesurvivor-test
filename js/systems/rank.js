@@ -43,6 +43,13 @@ G.Rank = (() => {
     return { star: b > a ? b : 0, over: false };
   }
 
+  /** Para la ficha: estrellas, copias, copias de la siguiente estrella (null al máximo) y cuántas faltan. */
+  function progress(dex) {
+    const dupes = dupesOf(dex), stars = starsFor(dupes);
+    const next = stars < THRESHOLDS.length ? THRESHOLDS[stars] : null;
+    return { stars, dupes, next, missing: next == null ? 0 : next - dupes };
+  }
+
   /** Bonus permanente: ×1 si no tiene estrellas. */
   function bonus(dex) {
     const stars = starsOf(dex);
@@ -64,5 +71,5 @@ G.Rank = (() => {
     return perks;
   }
 
-  return { MAX_DUPES, THRESHOLDS, root, starsFor, dupesOf, starsOf, add, bonus, apply };
+  return { MAX_DUPES, THRESHOLDS, root, starsFor, dupesOf, starsOf, progress, add, bonus, apply };
 })();

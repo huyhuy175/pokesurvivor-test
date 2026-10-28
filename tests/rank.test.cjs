@@ -216,3 +216,61 @@ test('UI.rankStars: 0 stars all off, 10 stars five red', () => {
 test('gacha card does not show coins for a duplicate without refund', () => {
   assert.match(source('js/ui/gacha-ui.js'), /r\.refund > 0/);
 });
+
+test('Rank.progress: stars, dupes, next threshold and how many are missing', () => {
+  const G = rankWorld(), R = G.Rank;
+  assert.deepEqual(R.progress(4), { stars: 0, dupes: 0, next: 1, missing: 1 });
+  G.DB.save.dupes[4] = 2;
+  assert.deepEqual(R.progress(6), { stars: 2, dupes: 2, next: 3, missing: 1 });   // evolución: cuenta la base
+  G.DB.save.dupes[4] = 5;
+  assert.deepEqual(R.progress(4), { stars: 5, dupes: 5, next: 7, missing: 2 });
+  G.DB.save.dupes[4] = 14;
+  assert.deepEqual(R.progress(4), { stars: 9, dupes: 14, next: 15, missing: 1 });
+  G.DB.save.dupes[4] = 15;
+  assert.deepEqual(R.progress(4), { stars: 10, dupes: 15, next: null, missing: 0 });
+  assert.deepEqual(R.progress(99999), { stars: 0, dupes: 0, next: 1, missing: 1 });
+});
+
+/** La ficha de la Pokédex (menu.js) con lo mínimo de la interfaz. */
+function dexWorld(dupes) {
+  const G = world(['js/data/pokedex.js', 'js/data/evolutions.js', 'js/data/mega.js', 'js/data/passive-fx.js',
+    'js/data/passive-unique-fx.js', 'js/data/passives-common.js', 'js/data/passives.js', 'js/data/ability-fx.js']);
+  G.DB = { save: { dupes: dupes || {} }, commit() {} };
+  new Function('G', source('js/systems/mons.js'))(G);
+  new Function('G', source('js/systems/rank.js'))(G);
+  const m = source('js/ui/ui.js').match(/function rankStars[\s\S]*?\r?\n  }\r?\n/);
+  G.UI = { $: () => null, rankStars: new Function(m[0] + '; return rankStars;')() };
+  new Function('G', source('js/ui/menu.js'))(G);
+  return G;
+}
+
+test('Pokédex detail: Rank stars with the next-star progress', () => {
+  let G = dexWorld({ 4: 2 });
+  let h = G.MenuUI.rankHtml(5);
+  assert.match(h, /1 more duplicate to the next star/);
+  assert.equal((h.match(/#ffd23f/g) || []).length, 2);
+  G = dexWorld({ 4: 5 });
+  assert.match(G.MenuUI.rankHtml(4), /2 more duplicates to the next star/);
+  G = dexWorld({ 4: 15 });
+  h = G.MenuUI.rankHtml(4);
+  assert.match(h, /Max Rank/);
+  assert.doesNotMatch(h, /to the next star/);
+});
+
+test('Pokédex detail: the unique passive is shown greyed with "Unlocks at 3★" below 3 stars', () => {
+  let G = dexWorld({ 4: 2 });
+  const u = G.Mons.abilityOf(4).unique;
+  let h = G.MenuUI.rankHtml(4);
+  assert.ok(h.includes(u.name) && h.includes(u.desc));
+  assert.match(h, /mx-locked/);
+  assert.match(h, /Unlocks at 3★/);
+  G = dexWorld({ 4: 3 });
+  h = G.MenuUI.rankHtml(4);
+  assert.ok(h.includes(u.name) && h.includes(G.Mons.abilityOf(4).unique.desc));
+  assert.doesNotMatch(h, /mx-locked|Unlocks at 3★/);
+});
+
+test('Pokédex detail uses rankHtml and the locked style exists', () => {
+  assert.match(source('js/ui/menu.js'), /\$\{rankHtml\(dex\)\}/);
+  assert.match(source('css/style.css'), /\.mx-locked\s*\{[^}]*opacity/);
+});

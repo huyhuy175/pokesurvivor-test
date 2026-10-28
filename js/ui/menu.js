@@ -386,8 +386,26 @@ G.MenuUI = (() => {
   let extraOpen = '';          // 'nat' | 'tm' | '' (qué selector está abierto)
   const natLine = n => (n.up ? `+${G.T(STAT_NAME[n.up])} −${G.T(STAT_NAME[n.down])}` : G.T('neutra'));
 
+  /**
+   * Rank y pasiva en la ficha: estrellas con las copias que faltan para la siguiente, la pasiva
+   * (común, o común + única desde 3★) y, mientras no llega a 3★, la única en gris para que se vea.
+   */
+  function rankHtml(dex) {
+    const ab = G.Mons.abilityOf(dex), u = ab.unique, pr = G.Rank.progress(dex);
+    const next = pr.next == null ? 'Max Rank'
+      : `${pr.missing} more duplicate${pr.missing === 1 ? '' : 's'} to the next star`;
+    let h = `<div class="mx-row"><span>Rank</span><span class="rank-stars">${G.UI.rankStars(pr.stars, 14)}</span><small>${next}</small></div>
+      <div class="mx-row"><span>Pasiva</span><b translate="no">${ab.name}</b></div>
+      <p class="sub mx-desc" translate="no">${ab.desc}</p>`;
+    if (u && u.name && u.locked) {
+      h += `<div class="mx-row mx-locked"><span>Unique</span><b translate="no">${u.name}</b><small>Unlocks at 3★</small></div>
+      <p class="sub mx-desc mx-locked" translate="no">${u.desc}</p>`;
+    }
+    return h;
+  }
+
   function monExtras(dex) {
-    const p = G.DEX_BY[dex], n = G.Mons.natureOf(dex), ab = G.Mons.abilityOf(dex);
+    const n = G.Mons.natureOf(dex);
     const taught = G.Mons.taught(dex);
     const tmsHere = G.Mons.learnable(dex).filter(id => G.Shop.tmCount(id) > 0);
     const btn = (key, icon, label, count) => count > 0
@@ -395,8 +413,7 @@ G.MenuUI = (() => {
     return `<div class="mon-extra">
       <div class="mx-row"><span>Naturaleza</span><b translate="no">${G.Mons.name(n.n)}</b><small>${natLine(n)}</small>
         ${btn('nat', 'mint', 'Menta', G.Shop.count('mint'))}</div>
-      <div class="mx-row"><span>Pasiva</span><b translate="no">${ab.name}</b></div>
-      <p class="sub mx-desc" translate="no">${ab.desc}</p>
+      ${rankHtml(dex)}
       <div class="mx-row"><span>MT</span>${taught.length
         ? `<span class="move-icons">${taught.map(id => `<span title="${G.T(G.Moves.BY_ID[id].name, 'move')}">${G.Icons.html('move:' + id, 16)}</span>`).join('')}</span>`
         : `<small>${G.T('Aún no ha aprendido ninguna')}</small>`}
@@ -637,5 +654,5 @@ G.MenuUI = (() => {
     return el;
   }
 
-  return { init, open, openDex, GEN_NAMES };
+  return { init, open, openDex, rankHtml, GEN_NAMES };
 })();
