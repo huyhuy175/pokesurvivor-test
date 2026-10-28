@@ -165,6 +165,7 @@
         if (G.UI.isOpen('scr-lobby')) render();
       });
       G.Net.onPeer(() => { if (G.UI.isOpen('scr-lobby')) render(); });
+      G.Net.onPing(() => { if (G.UI.isOpen('scr-lobby') && G.Social.room) updateConn(G.Social.room); });
     }
 
     function open() {
@@ -183,6 +184,29 @@
       if (!room.isHost) return m.uid === G.Social.uid ? 'Tú' : 'En la sala';
       const mode = G.Net.mode(m.uid);
       return mode === 'direct' ? (G.Net.viaTurn(m.uid) ? 'Conectado (por servidor)' : 'Conectado') : mode === 'relay' ? 'Conectado (por servidor)' : mode === 'failed' ? 'No se pudo conectar (reintentando…)' : 'Conectando…';
+    }
+
+    /** Ping (ms) de la tarjeta de m: el anfitrión ve el de cada invitado; el invitado, el suyo. */
+    function pingOf(m, room) {
+      if (room.isHost) return m.uid === room.host ? null : G.Net.ping(m.uid);
+      return m.uid === G.Social.uid ? G.Net.ping(room.host) : null;
+    }
+
+    /** Estado de conexión y ping de cada tarjeta (sin rehacer las tarjetas). */
+    function updateConn(room) {
+      $('lobby-members').querySelectorAll('.conn').forEach(el => {
+        const m = room.members.find(x => x.uid === el.dataset.u);
+        if (!m) return;
+        const t = connText(m, room), ms = pingOf(m, room);
+        el.textContent = t;
+        if (ms != null) {
+          const s = document.createElement('span');
+          s.style.color = G.Net.pingColor(ms);
+          s.textContent = ' · ' + ms + ' ms';
+          el.appendChild(s);
+        }
+        el.className = 'conn' + (t === 'Conectando…' ? ' wait' : '');
+      });
     }
 
     function render() {
@@ -211,13 +235,7 @@
           box.appendChild(c);
         }
       }
-      box.querySelectorAll('.conn').forEach(el => {
-        const m = ms.find(x => x.uid === el.dataset.u);
-        if (!m) return;
-        const t = connText(m, room);
-        el.textContent = t;
-        el.className = 'conn' + (t === 'Conectando…' ? ' wait' : '');
-      });
+      updateConn(room);
 
       // Invitar (sólo el anfitrión y si queda sitio).
       const canInvite = room.isHost && ms.length < G.Social.MAX_PLAYERS;

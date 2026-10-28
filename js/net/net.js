@@ -20,6 +20,7 @@
  * API:  open(roomId, isHost, hostUid) · close() · send(to, msg) · toHost(msg)
  *       broadcast(msg) · on(fn(from, msg)) · onPeer(fn(uid, state))
  *       peers() · mode(uid) -> 'connecting' | 'direct' | 'relay' | 'closed'
+ *       ping(uid) -> ms (ida y vuelta, suavizado) o null · onPing(fn(uid, ms))
  */
 G.Net = (() => {
   const ICE = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
@@ -33,6 +34,9 @@ G.Net = (() => {
   // junta ('failed') y el anfitrión lo reintenta cada RETRY_MS. Por la base de datos
   // sólo pasa la señalización (unos pocos mensajes pequeños para conectarse).
   const ALLOW_RELAY = false, RETRY_MS = 15000;
+  // Ping: cada PING_MS se manda {k:'ping',t} por el canal directo y el otro lo devuelve como
+  // {k:'pong',t}. No pasa por deliver (el cooperativo no lo ve). Sin respuesta en PING_STALE, no hay dato.
+  const PING_MS = 2000, PING_STALE = 8000;
 
 
   let rtdb = null, uid = null, roomId = null, isHost = false, hostUid = null;
@@ -42,7 +46,7 @@ G.Net = (() => {
   // sesión (no sólo la sala) para no perder otra vez la espera sin TURN; y si ha
   // fallado con 2 o más, el problema será la red propia: TURN desde el principio.
   const needTurn = new Set();
-  const handlers = new Set(), peerHandlers = new Set();
+  const handlers = new Set(), peerHandlers = new Set(), pingHandlers = new Set();
   const stats = { sent: 0, recv: 0, relaySent: 0,
     // Sólo los datos de la partida que se han mandado bien (sin ICE/SCTP/DTLS/TURN).
     sentBytes: 0, jsonBytes: 0, recvBytes: 0, binarySent: 0, binaryRecv: 0, invalidBinary: 0 };
@@ -190,12 +194,13 @@ G.Net = (() => {
     dc.onopen = () => {
       clearTimeout(p.timer); p.mode = 'direct';
       if (p.pc) checkTurn(u, p);
+      clearTimeout(p.pinger); pingLoop(p);
       // Aviso de que entendemos binario (las versiones viejas lo ignoran); hasta que el otro
       // mande el suyo, se le habla en JSON.
       try { dc.send(JSON.stringify({ k: 'net-cap', binary: G.NetCodec.version })); } catch (e) { /* el JSON sigue valiendo */ }
       emitPeer(u);
     };
-    dc.onclose = () => { if (p.mode === 'direct') { p.mode = 'connecting'; useRelay(u); } };
+    dc.onclose = () => { clearTimeout(p.pinger); if (p.mode === 'direct') { p.mode = 'connecting'; useRelay(u); } };
     dc.onmessage = e => {
       let m;
       if (typeof e.data === 'string') {
@@ -204,6 +209,8 @@ G.Net = (() => {
           p.binaryVersion = m.binary === G.NetCodec.version ? m.binary : 0;
           return;
         }
+        if (m && m.k === 'ping') { try { dc.send(JSON.stringify({ k: 'pong', t: m.t })); } catch (err) { /* sin respuesta */ } return; }
+        if (m && m.k === 'pong') { pongIn(u, p, m.t); return; }
         stats.recvBytes += G.NetCodec.size(e.data);
       } else {
         try {
@@ -215,6 +222,21 @@ G.Net = (() => {
       }
       deliver(u, m);
     };
+  }
+
+  function pingLoop(p) { pingNow(p); p.pinger = setTimeout(() => pingLoop(p), PING_MS); }
+
+  function pingNow(p) {
+    if (p.dc && p.dc.readyState === 'open') try { p.dc.send(JSON.stringify({ k: 'ping', t: performance.now() })); } catch (e) { /* se reintenta */ }
+  }
+
+  function pongIn(u, p, t) {
+    const rtt = performance.now() - t;
+    if (typeof t !== 'number' || t < 0 || !(rtt >= 0 && rtt < 10000)) return;
+    p.rtt = p.rtt == null ? rtt : p.rtt * 0.7 + rtt * 0.3;
+    p.rttAt = performance.now();
+    const ms = Math.round(p.rtt);
+    pingHandlers.forEach(fn => { try { fn(u, ms); } catch (e) { console.warn(e); } });
   }
 
   function useRelay(u) {
@@ -292,7 +314,7 @@ G.Net = (() => {
   function drop(u, silent) {
     const p = peers.get(u);
     if (!p) return;
-    clearTimeout(p.timer);
+    clearTimeout(p.timer); clearTimeout(p.pinger);
     p.mode = 'closed';
     try { if (p.dc) p.dc.close(); } catch (e) { /* nada */ }
     try { if (p.pc) p.pc.close(); } catch (e) { /* nada */ }
@@ -343,6 +365,14 @@ G.Net = (() => {
     open, close, syncMembers, send, toHost, broadcast,
     on(fn) { handlers.add(fn); }, off(fn) { handlers.delete(fn); },
     onPeer(fn) { peerHandlers.add(fn); },
+    onPing(fn) { pingHandlers.add(fn); },
+    /** Ping (ms) con u por el canal directo, o null si aún no hay dato. */
+    ping(u) {
+      const p = peers.get(u);
+      return p && p.mode === 'direct' && p.rtt != null && performance.now() - p.rttAt < PING_STALE ? Math.round(p.rtt) : null;
+    },
+    /** Color para un ping: verde, amarillo (80 ms) o rojo (160 ms). */
+    pingColor(ms) { return ms < 80 ? '#5fe08a' : ms < 160 ? '#ffd34d' : '#ff5f6d'; },
     mode(u) { const p = peers.get(u); return p ? p.mode : 'closed'; },
     /** ¿Conectado pero pasando por el TURN propio? */
     viaTurn(u) { const p = peers.get(u); return !!(p && p.mode === 'direct' && p.viaTurn); },

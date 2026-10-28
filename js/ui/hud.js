@@ -511,7 +511,20 @@ G.HUD = (() => {
         ctx.fillStyle = Math.sin(t * 8) > 0 ? '#ff8a96' : '#ffd0d5';
         ctx.fillText('CAÍDO', lx + 116, y + 9);
       }
+      const ms = G.Net.isHost ? G.Net.ping(m.uid) : null;
+      if (ms != null) {
+        ctx.font = F(800, 9);
+        ctx.fillStyle = G.Net.pingColor(ms);
+        ctx.fillText(ms + ' ms', lx + (o.dead ? 160 : 116), y + 9);
+      }
       y += 15;
+    }
+    // Invitado: su ping con el anfitrión.
+    const mine = !G.Net.isHost ? G.Net.ping(G.Net.hostUid) : null;
+    if (mine != null) {
+      ctx.font = F(800, 9);
+      ctx.fillStyle = G.Net.pingColor(mine);
+      ctx.fillText('Ping ' + mine + ' ms', px, y + 9);
     }
 
     // Flechas hacia los compañeros fuera de la vista.

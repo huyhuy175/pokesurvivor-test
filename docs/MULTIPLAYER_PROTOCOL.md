@@ -16,6 +16,12 @@ Older clients ignore the unknown message kind and continue using JSON. Unknown
 versions also retain JSON; reconnecting resets the capability. Since the channel
 is ordered, the sender's capability precedes its binary frames at the receiver.
 
+Round-trip time: once a channel is open, each side sends the JSON message
+`{"k":"ping","t":<performance.now()>}` every 2 s and the receiver answers
+`{"k":"pong","t":<same t>}`. `G.Net` consumes both (they never reach the game
+handlers) and exposes a smoothed value as `G.Net.ping(uid)`; no pong for 8 s
+means no value. Older clients do not answer, so they simply show no ping.
+
 Only `k: "f"` frames are candidates. Each send compares the encoded frame against
 its UTF-8 JSON byte count, and uses binary only if smaller. Unsupported values
 and packets exceeding the codec limits retain the existing JSON path. Start and
