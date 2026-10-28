@@ -121,10 +121,21 @@ test('startTypePick stores pendingType, is idempotent and spends once', () => {
   assert.equal(a.ok, true);
   assert.ok(TYPES.includes(a.type));
   assert.equal(s.pendingType, a.type);
+  assert.equal(s.typeDraw, 1);
+  assert.equal(G.Gacha.pendingType(s), a.type);
   assert.equal(s.bag.wishtype, 1);
   const b = G.Gacha.startTypePick(s);
   assert.deepEqual(b, { ok: true, type: a.type });
   assert.equal(s.bag.wishtype, 1);
+  assert.equal(s.typeDraw, 1);
+});
+
+test('a pendingType at or below the claimed mark is not pending (no free pick)', () => {
+  const G = gachaWorld(), s = withSave(G, { pendingType: 'fire', typeDraw: 1, typeClaim: 1 });
+  assert.equal(G.Gacha.pendingType(s), null);
+  assert.deepEqual(G.Gacha.claim(s, 'type', G.Gacha.missing(s, 'fire')[0]), { ok: false, reason: 'type' });
+  assert.deepEqual(G.Gacha.startTypePick(s), { ok: false, reason: 'item' });
+  assert.ok(!('pendingType' in s));
 });
 
 test('startTypePick without ticket fails with item', () => {
@@ -163,6 +174,8 @@ test('claim type: wrong type, owned, ok', () => {
   assert.equal(G.Gacha.claim(s, 'type', inType[1]).ok, true);
   assert.equal(s.owned[inType[1]].from, 'wish');
   assert.equal(s.pendingType, undefined);
+  assert.equal(s.typeClaim, s.typeDraw);
+  assert.equal(s.typeClaim, 1);
   assert.deepEqual(s.pity, { 1: 5 });
 });
 
@@ -235,16 +248,19 @@ test('startTypePick discards a stale pendingType and draws again', () => {
   ownAll(G, s);
   const left = G.Gacha.missing(newSave(), 'fire')[0];
   delete s.owned[left];
-  s.pendingType = 'dragon';          // ya no queda ningún dragón por conseguir
+  s.pendingType = 'dragon'; s.typeDraw = 1;   // ya no queda ningún dragón por conseguir
   assert.equal(G.Gacha.missing(s, 'dragon').length, 0);
   const r = G.Gacha.startTypePick(s);
   assert.equal(r.ok, true);
   assert.ok(G.DEX_BY[left].types.includes(r.type));
   assert.equal(s.bag.wishtype, undefined);
+  assert.equal(s.typeClaim, 1);       // el sorteo viejo cuenta como gastado
+  assert.equal(s.typeDraw, 2);
   // sin vale: se descarta igualmente y avisa
-  const t = withSave(G, {}); ownAll(G, t); t.pendingType = 'dragon';
+  const t = withSave(G, {}); ownAll(G, t); t.pendingType = 'dragon'; t.typeDraw = 4; t.typeClaim = 3;
   assert.deepEqual(G.Gacha.startTypePick(t), { ok: false, reason: 'item' });
   assert.equal(t.pendingType, undefined);
+  assert.equal(t.typeClaim, 4);
 });
 
 test('claim returns invalid for unknown dex, non-base dex and unknown kind', () => {
@@ -270,28 +286,62 @@ const baseSave = extra => Object.assign({
 
 test('sanitize keeps wish ids in the bag and valid pendingType, drops invalid', () => {
   const G = dbWorld();
-  const a = baseSave({ bag: { wishsure: 3, wishtype: 1500, wishany: 1, bogus: 2 }, pendingType: 'fire' });
+  const a = baseSave({ bag: { wishsure: 3, wishtype: 1500, wishany: 1, bogus: 2 }, pendingType: 'fire', typeDraw: 1 });
   G.DB.sanitize(a);
   assert.deepEqual(a.bag, { wishsure: 3, wishtype: 999, wishany: 1 });
   assert.equal(a.pendingType, 'fire');
   for (const bad of ['laser', 5, null, {}, '']) {
-    const b = baseSave({ pendingType: bad }); G.DB.sanitize(b);
+    const b = baseSave({ pendingType: bad, typeDraw: 1 }); G.DB.sanitize(b);
     assert.equal(b.pendingType, undefined);
   }
   const c = baseSave({}); G.DB.sanitize(c);
   assert.ok(!('pendingType' in c));
 });
 
-test('merge keeps pendingType from the newer side, falling back to the older', () => {
+test('merge: the draw with the highest id wins; on a tie, the newer side', () => {
   const G = dbWorld();
-  let r = G.DB.merge(baseSave({ updated: 2, pendingType: 'fire' }), baseSave({ updated: 1, pendingType: 'water' }));
+  let r = G.DB.merge(baseSave({ updated: 2, pendingType: 'fire', typeDraw: 1 }), baseSave({ updated: 1, pendingType: 'water', typeDraw: 1 }));
   assert.equal(r.pendingType, 'fire');
-  r = G.DB.merge(baseSave({ updated: 2 }), baseSave({ updated: 1, pendingType: 'water' }));
+  r = G.DB.merge(baseSave({ updated: 2, pendingType: 'fire', typeDraw: 1 }), baseSave({ updated: 1, pendingType: 'water', typeDraw: 3, typeClaim: 2 }));
   assert.equal(r.pendingType, 'water');
-  r = G.DB.merge(baseSave({ updated: 1, pendingType: 'ice' }), baseSave({ updated: 2 }));
-  assert.equal(r.pendingType, 'ice');
+  assert.equal(r.typeDraw, 3);
+  assert.equal(r.typeClaim, 2);
   r = G.DB.merge(baseSave({ updated: 2 }), baseSave({ updated: 1 }));
   assert.ok(!('pendingType' in r));
+});
+
+test('merge: older side has an unclaimed draw, newer has none and nothing claimed => draw survives', () => {
+  const G = dbWorld();
+  let r = G.DB.merge(baseSave({ updated: 2 }), baseSave({ updated: 1, pendingType: 'water', typeDraw: 1 }));
+  assert.equal(r.pendingType, 'water');
+  assert.equal(r.typeDraw, 1);
+  r = G.DB.merge(baseSave({ updated: 1, pendingType: 'ice', typeDraw: 1 }), baseSave({ updated: 2 }));
+  assert.equal(r.pendingType, 'ice');
+});
+
+test('merge: newer side already claimed, older side still has the draw => no pending draw after merge', () => {
+  const G = dbWorld();
+  const cloud = baseSave({ updated: 1, pendingType: 'fire', typeDraw: 1, typeClaim: 0 });
+  const local = baseSave({ updated: 2, typeDraw: 1, typeClaim: 1 });
+  for (const r of [G.DB.merge(local, cloud), G.DB.merge(cloud, local), G.DB.merge(G.DB.merge(local, cloud), cloud)]) {
+    assert.ok(!('pendingType' in r));
+    assert.equal(r.typeClaim, 1);
+  }
+  // también si el que reclamó es el más viejo (la nube) y el local reciente aún lo tiene
+  const r = G.DB.merge(baseSave({ updated: 5, pendingType: 'fire', typeDraw: 1 }), baseSave({ updated: 1, typeDraw: 1, typeClaim: 1 }));
+  assert.ok(!('pendingType' in r));
+});
+
+test('sanitize clamps typeDraw/typeClaim and drops a pendingType that is not above the claimed mark', () => {
+  const G = dbWorld();
+  const a = baseSave({ pendingType: 'fire', typeDraw: 2.7, typeClaim: -4 }); G.DB.sanitize(a);
+  assert.equal(a.typeDraw, 2); assert.equal(a.typeClaim, 0); assert.equal(a.pendingType, 'fire');
+  const b = baseSave({ pendingType: 'fire', typeDraw: 'x', typeClaim: 1e99 }); G.DB.sanitize(b);
+  assert.ok(Number.isInteger(b.typeDraw) && Number.isInteger(b.typeClaim));
+  assert.ok(b.typeDraw >= b.typeClaim);
+  assert.ok(!('pendingType' in b));
+  const c = baseSave({ pendingType: 'fire', typeDraw: 1, typeClaim: 1 }); G.DB.sanitize(c);
+  assert.ok(!('pendingType' in c));
 });
 
 test('wish ids follow the ledger rule for bag keys', () => {
@@ -333,5 +383,8 @@ test('bag lists the three wish items with a Use button for wishtype and wishany'
   assert.match(src, /WISH_IDS/);
   assert.match(src, /data-wish=/);
   assert.match(src, /G\.GachaUI\.openPick/);
+  // "Resume" sólo con un sorteo de verdad pendiente (no con un pendingType ya reclamado)
+  assert.doesNotMatch(src, /s\.pendingType/);
+  assert.match(src, /G\.Gacha\.pendingType\(s\)/);
   assert.match(source('js/data/shop.js'), /const ORDER = \['mint'\];/);
 });

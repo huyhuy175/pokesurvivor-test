@@ -584,8 +584,9 @@ G.ShopUI = (() => {
     const mats = G.MegaMats.TYPES.filter(t => G.Shop.count(G.MegaMats.id(t)) > 0);
     const tms = Object.keys(s.tms || {}).filter(id => G.Moves.BY_ID[id] && s.tms[id] > 0).sort((a, b) => moveName(a).localeCompare(moveName(b)));
     // Vales wish (no se compran): con "Use" los de elección; el de garantía se usa en el gacha.
-    // Un sorteo de tipo a medias (pendingType) se puede retomar aunque ya no quede vale.
-    const wishes = WISH_IDS.filter(id => G.Shop.count(id) > 0 || (id === 'wishtype' && s.pendingType));
+    // Un sorteo de tipo a medias (G.Gacha.pendingType) se puede retomar aunque ya no quede vale.
+    const pending = !!G.Gacha.pendingType(s);
+    const wishes = WISH_IDS.filter(id => G.Shop.count(id) > 0 || (id === 'wishtype' && pending));
     if (!items.length && !tms.length && !mats.length && !wishes.length) {
       return `<p class="sub center" style="margin:24px 0">${G.T('Tu Mochila está vacía.')}<br><br>
             <button class="btn gold" data-go-shop>${G.Icons.html('shop', 16)} ${G.T('Ir a la Tienda Kecleon')}</button></p>` + irisHtml();
@@ -600,7 +601,7 @@ G.ShopUI = (() => {
       const it = G.Shop.ITEMS[id], n = G.Shop.count(id);
       const use = id === 'wishsure'
         ? `<small class="sub">${G.T('Tick it in the Gacha')}</small>`
-        : `<button class="btn small gold" data-wish="${id}">${id === 'wishtype' && s.pendingType && !n ? G.T('Resume') : G.T('Use')}</button>`;
+        : `<button class="btn small gold" data-wish="${id}">${id === 'wishtype' && pending && !n ? G.T('Resume') : G.T('Use')}</button>`;
       h += row(G.Icons.html(it.icon, 32), G.T(it.name), G.T(it.desc), `<b class="gold">×${n}</b> ${use}`);
     }
     for (const t of mats) {

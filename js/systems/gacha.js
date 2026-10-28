@@ -186,16 +186,33 @@ G.Gacha = (() => {
    * Vale de tipo: gasta 1 y sortea un tipo con algún Pokémon por conseguir (queda en save.pendingType).
    * Quien llame debe hacer G.DB.commit(true) enseguida, o el sorteo (y el vale gastado) se pierde al recargar.
    */
+  /*
+   * Cada sorteo lleva un número que sólo crece (save.typeDraw) y save.typeClaim es el
+   * último ya usado. El sorteo sólo está pendiente si typeDraw > typeClaim: así, al
+   * fusionar con una copia vieja (la nube aún con pendingType), un tipo ya reclamado
+   * no vuelve como otro Pokémon gratis (db.js merge toma el mayor de cada número).
+   */
+  const ctr = v => (Number.isFinite(+v) && +v > 0 ? Math.floor(+v) : 0);
+  /** El tipo sorteado pendiente de elegir, o null. */
+  function pendingType(save) {
+    return save.pendingType && ctr(save.typeDraw) > ctr(save.typeClaim) ? save.pendingType : null;
+  }
+  /** Da por usado el sorteo actual (reclamado o descartado). */
+  function closeDraw(save) {
+    save.typeClaim = Math.max(ctr(save.typeClaim), ctr(save.typeDraw));
+    delete save.pendingType;
+  }
+
   function startTypePick(save) {
-    if (save.pendingType) {
-      if (missing(save, save.pendingType).length) return { ok: true, type: save.pendingType };
-      // Ya tienes todos los de ese tipo: el sorteo no sirve. Se descarta (el vale gastado se pierde).
-      delete save.pendingType;
-    }
+    const cur = pendingType(save);
+    if (cur && missing(save, cur).length) return { ok: true, type: cur };
+    // Ya tienes todos los de ese tipo (o ya se usó): el sorteo no sirve. Se descarta (el vale gastado se pierde).
+    if (save.pendingType) closeDraw(save);
     if (!G.Shop.count('wishtype')) return { ok: false, reason: 'item' };
     const types = Object.keys(G.U.TYPE_NAME).filter(t => missing(save, t).length);
     if (!types.length) return { ok: false, reason: 'none' };
     G.Shop.take('wishtype');
+    save.typeDraw = Math.max(ctr(save.typeDraw), ctr(save.typeClaim)) + 1;
     save.pendingType = G.U.pick(types);
     return { ok: true, type: save.pendingType };
   }
@@ -205,9 +222,10 @@ G.Gacha = (() => {
     const mon = G.DEX_BY[dex];
     if (!mon || !G.Mons.isBase(dex) || (kind !== 'type' && kind !== 'any')) return { ok: false, reason: 'invalid' };
     if (kind === 'type') {
-      if (!save.pendingType || !mon.types.includes(save.pendingType)) return { ok: false, reason: 'type' };
+      const t = pendingType(save);
+      if (!t || !mon.types.includes(t)) return { ok: false, reason: 'type' };
       if (save.owned[dex]) return { ok: false, reason: 'owned' };
-      delete save.pendingType;
+      closeDraw(save);
     } else {
       if (!G.Shop.count('wishany')) return { ok: false, reason: 'item' };
       if (save.owned[dex]) return { ok: false, reason: 'owned' };
@@ -223,7 +241,7 @@ G.Gacha = (() => {
     return x < 0.80 ? 'wishsure' : x < 0.95 ? 'wishtype' : 'wishany';
   }
 
-  return { debugForceShiny(n = 1) { forceShiny = n; }, missing, missingIn, startTypePick, claim, rollWish,
+  return { debugForceShiny(n = 1) { forceShiny = n; }, missing, missingIn, pendingType, startTypePick, claim, rollWish,
            costOf, RATES, PITY_5, SHINY_RATE, SHINY_RATE_IRIS, REFUND, RARITY_NAME, RARITY_COLOR, BANNERS,
            pool, featured, pull, dexOf, hasIris, shinyRate };
 })();

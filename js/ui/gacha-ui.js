@@ -206,10 +206,10 @@ G.GachaUI = (() => {
   }
 
   function renderPick() {
-    const s = G.DB.save, box = $('wish-pick-list');
-    const list = pickKind === 'type' ? G.Gacha.missing(s, s.pendingType) : G.Gacha.missing(s);
+    const s = G.DB.save, box = $('wish-pick-list'), t = G.Gacha.pendingType(s);
+    const list = pickKind === 'type' ? (t ? G.Gacha.missing(s, t) : []) : G.Gacha.missing(s);
     $('wish-pick-title').innerHTML = pickKind === 'type'
-      ? `Type Pick: <span class="tag-chip" style="background:${G.U.TYPE_COLOR[s.pendingType]}">${G.U.TYPE_NAME[s.pendingType]}</span>`
+      ? `Type Pick: <span class="tag-chip" style="background:${G.U.TYPE_COLOR[t]}">${G.U.TYPE_NAME[t]}</span>`
       : 'Free Pick';
     $('wish-pick-sub').textContent = 'Choose the Pokémon you want. It will be yours for free.';
     box.innerHTML = '';

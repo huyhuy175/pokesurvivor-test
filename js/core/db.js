@@ -249,8 +249,15 @@ G.DB = (() => {
         if (!s[k][id] || !ok(id)) delete s[k][id];
       }
     }
-    // Vale de tipo en curso (gacha): sólo un tipo que exista.
-    if (s.pendingType !== undefined && !(typeof s.pendingType === 'string' && G.U && G.U.TYPE_NAME && Object.prototype.hasOwnProperty.call(G.U.TYPE_NAME, s.pendingType))) delete s.pendingType;
+    // Vale de tipo (gacha): número del último sorteo y del último usado (enteros, sólo crecen;
+    // el usado nunca por encima del sorteado). El tipo en curso: sólo uno que exista y sin usar.
+    for (const k of ['typeDraw', 'typeClaim']) {
+      if (s[k] === undefined) continue;
+      s[k] = Math.min(1e9, n(s[k]));
+    }
+    if (s.typeClaim > (s.typeDraw || 0)) s.typeDraw = s.typeClaim;
+    if (s.pendingType !== undefined && !(typeof s.pendingType === 'string' && G.U && G.U.TYPE_NAME && Object.prototype.hasOwnProperty.call(G.U.TYPE_NAME, s.pendingType)
+        && (s.typeDraw || 0) > (s.typeClaim || 0))) delete s.pendingType;
     // MT aprendidas: movimientos que existen, sin repetir.
     if (!isObj(s.ptm)) s.ptm = {};
     for (const d of Object.keys(s.ptm)) {
@@ -449,8 +456,15 @@ G.DB = (() => {
     // Copias repetidas (Rank): el mayor de los dos por Pokémon.
     r.dupes = r.dupes || {};
     for (const d in older.dupes || {}) r.dupes[d] = Math.max(+r.dupes[d] || 0, +older.dupes[d] || 0);
-    // Vale de tipo en curso: el de la versión más reciente; si ésta no tiene, el de la otra.
-    if (!r.pendingType && older.pendingType) r.pendingType = older.pendingType;
+    // Vale de tipo: el mayor sorteo y el mayor usado (sólo crecen). Queda pendiente el tipo del
+    // sorteo más alto (a igualdad, el de la versión más reciente) sólo si aún no se ha usado:
+    // un sorteo sin usar nunca se pierde y uno ya reclamado nunca vuelve.
+    const draw = Math.max(num(newer.typeDraw), num(older.typeDraw)), used = Math.max(num(newer.typeClaim), num(older.typeClaim));
+    const from = [newer, older].find(x => x.pendingType && num(x.typeDraw) === draw);
+    delete r.pendingType; delete r.typeDraw; delete r.typeClaim;
+    if (draw) r.typeDraw = draw;
+    if (used) r.typeClaim = used;
+    if (from && draw > used) r.pendingType = from.pendingType;
     // Movimiento inicial: el de la versión más reciente; si no lo tenía elegido, el de la otra.
     for (const k of ['pstart', 'pstart2']) {
       r[k] = r[k] || {};
