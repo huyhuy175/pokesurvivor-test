@@ -64,98 +64,267 @@ test('conditional state lives on the player object', () => {
   assert.equal(a.out(p1, { type: 'fire' }), 1);
 });
 
-// ---------------- datos: passives.js ----------------
-function data() { return world('js/data/pokedex.js', 'js/data/passive-fx.js', 'js/data/passives.js'); }
+// ---------------- datos: passives.js (unique por línea evolutiva) ----------------
+const DATA = ['js/data/pokedex.js', 'js/data/evolutions.js', 'js/data/mega.js', 'js/data/passive-fx.js',
+  'js/data/passive-unique-fx.js', 'js/data/passives-common.js', 'js/data/passives.js'];
+function data() {
+  const G = world(...DATA);
+  new Function('G', source('js/systems/mons.js'))(G);
+  return G;
+}
+/** Forma base de cada línea → sus miembros (como G.Rank.root). */
+function lines(G) {
+  const out = new Map();
+  for (const p of G.DEX) {
+    const l = G.Mons.lineage(p.dex), r = l.length ? l[0] : p.dex;
+    if (!out.has(r)) out.set(r, []);
+    out.get(r).push(p.dex);
+  }
+  return out;
+}
+const TIER_OF = p => (p.leg || p.rarity >= 5 ? 'supreme' : p.rarity === 4 ? 'adv' : 'basic');
+const tierBudget = (G, tier) => {
+  const ids = G.UniqueFX.TIERS[tier], T = G.UniqueFX.TEMPLATES;
+  return ids.reduce((s, id) => s + T[id].cost * T[id].max, 0) / ids.length;
+};
+const tplOf = (G, id) => G.PassiveFX.TEMPLATES[id] || G.UniqueFX.TEMPLATES[id];
 
-test('all Pokémon have a passive', () => {
-  const G = data();
+test('every evolution line root has a unique passive, nothing else does, and G.PASSIVES is gone', () => {
+  const G = data(), roots = [...lines(G).keys()].sort((a, b) => a - b);
   assert.equal(G.DEX.length, 966);
-  for (const p of G.DEX) {
-    const e = G.PASSIVES[p.dex];
-    assert.ok(e && e.n && e.fx.length >= 1 && e.fx.length <= 3, 'dex ' + p.dex);
+  assert.equal(G.PASSIVES, undefined);
+  assert.deepEqual(Object.keys(G.PASSIVES_UNIQUE).map(Number).sort((a, b) => a - b), roots);
+  for (const r of roots) {
+    const e = G.PASSIVES_UNIQUE[r];
+    assert.ok(e && typeof e.n === 'string' && e.n.length > 2, 'root ' + r);
+    assert.ok(['basic', 'adv', 'supreme'].includes(e.tier), 'root ' + r);
+    assert.ok(e.fx.length >= 1 && e.fx.length <= 3, 'root ' + r);
   }
+  assert.ok(roots.length > 400 && roots.length < 600, roots.length + ' lines');
 });
-test('names are unique', () => {
+
+test('unique names are English and unique across unique and common passives', () => {
   const G = data(), seen = new Map();
-  for (const p of G.DEX) {
-    const n = G.PASSIVES[p.dex].n.toLowerCase();
-    assert.ok(!seen.has(n), `${n}: dex ${seen.get(n)} and ${p.dex}`);
-    seen.set(n, p.dex);
+  for (const [t, p] of Object.entries(G.PASSIVES_COMMON)) seen.set(p.n.toLowerCase(), 'common ' + t);
+  for (const [r, e] of Object.entries(G.PASSIVES_UNIQUE)) {
+    assert.match(e.n, /^[A-Z][A-Za-z'-]*( [A-Za-z'-]+)*$/, `root ${r}: ${e.n}`);
+    const n = e.n.toLowerCase();
+    assert.ok(!seen.has(n), `${e.n}: ${seen.get(n)} and root ${r}`);
+    seen.set(n, 'root ' + r);
   }
 });
-test('rarity 4-5 signatures are unique', () => {
-  const G = data(), seen = new Map();
-  for (const p of G.DEX.filter(p => p.rarity >= 4)) {
-    const s = G.PassiveFX.signature(G.PASSIVES[p.dex].fx);
-    assert.ok(!seen.has(s), `${s}: dex ${seen.get(s)} and ${p.dex}`);
-    seen.set(s, p.dex);
-  }
-});
-test('power is inside the band of its rarity (including unevolved rarity 5)', () => {
+
+test('tier follows the root rarity: 1-3 basic, 4 adv, 5 / legendary / mythical supreme', () => {
   const G = data();
-  for (const p of G.DEX) {
-    const [lo, hi] = G.PassiveFX.BANDS[p.rarity], w = G.PassiveFX.power(G.PASSIVES[p.dex].fx);
-    assert.ok(w >= lo && w <= hi, `dex ${p.dex} rarity ${p.rarity} power ${w} not in ${lo}-${hi}`);
+  for (const [r, e] of Object.entries(G.PASSIVES_UNIQUE)) assert.equal(e.tier, TIER_OF(G.DEX_BY[r]), 'root ' + r);
+  const leg = G.DEX.filter(p => p.leg && !G.Mons.lineage(p.dex).length);
+  assert.ok(leg.length >= 70);
+  for (const p of leg) assert.equal(G.PASSIVES_UNIQUE[p.dex].tier, 'supreme', p.name);
+  for (const p of G.DEX.filter(p => p.leg)) {           // Solgaleo, Melmetal…: la de su línea, también supreme
+    const l = G.Mons.lineage(p.dex);
+    assert.equal(G.PASSIVES_UNIQUE[l.length ? l[0] : p.dex].tier, 'supreme', p.name);
   }
-  assert.equal(G.DEX_BY[789].rarity, 5);          // Cosmog: rareza 5 en primera etapa
 });
-test('every effect id exists and its value is in range', () => {
+
+test('unique signatures are unique within each tier', () => {
+  const G = data(), seen = { basic: new Map(), adv: new Map(), supreme: new Map() };
+  for (const [r, e] of Object.entries(G.PASSIVES_UNIQUE)) {
+    const s = G.PassiveFX.signature(e.fx);
+    assert.ok(!seen[e.tier].has(s), `${e.tier} ${s}: root ${seen[e.tier].get(s)} and ${r}`);
+    seen[e.tier].set(s, r);
+  }
+});
+
+// Antes: «power is inside the band of its rarity» (BANDS por rareza de cada dex). Ahora el
+// presupuesto es casi plano: el medio de su bandeja (cost × max de sus plantillas) ±15 %.
+test('unique power stays within ±15% of its tier mean budget', () => {
   const G = data();
-  for (const p of G.DEX) for (const [id, v] of G.PASSIVES[p.dex].fx) {
-    const t = G.PassiveFX.TEMPLATES[id];
-    assert.ok(t, `dex ${p.dex}: ${id}`);
-    assert.ok(Number.isInteger(v) && v >= t.min && v <= t.max, `dex ${p.dex}: ${id}=${v}`);
+  for (const [r, e] of Object.entries(G.PASSIVES_UNIQUE)) {
+    const B = tierBudget(G, e.tier), w = G.PassiveFX.power(e.fx);
+    assert.ok(w >= B * 0.85 - 1e-9 && w <= B * 1.15 + 1e-9, `root ${r} ${e.tier}: power ${w} not in ${B * 0.85}-${B * 1.15}`);
   }
 });
-test('rarity 1-3 use no conditional templates; rarity 5 may', () => {
+
+// Antes: «higher rarity never has a weaker passive» (bandas sin solaparse). Ahora la rareza
+// cambia la clase de mecánica, no el número: cada bandeja tiene más presupuesto medio que la
+// anterior, y dentro de una bandeja las líneas más flojas (BST final más bajo) reciben más.
+test('higher tiers have a larger mean budget and weaker lines get more within a tier', () => {
+  const G = data(), L = lines(G), by = { basic: [], adv: [], supreme: [] };
+  for (const [r, e] of Object.entries(G.PASSIVES_UNIQUE)) {
+    by[e.tier].push({ bst: Math.max(...L.get(+r).map(d => G.DEX_BY[d].bst)), w: G.PassiveFX.power(e.fx) });
+  }
+  const mean = a => a.reduce((s, x) => s + x.w, 0) / a.length;
+  assert.ok(mean(by.basic) < mean(by.adv) && mean(by.adv) < mean(by.supreme),
+    `means ${mean(by.basic)} / ${mean(by.adv)} / ${mean(by.supreme)}`);
+  for (const [tier, a] of Object.entries(by)) {
+    a.sort((x, y) => x.bst - y.bst);
+    const weak = a.slice(0, Math.floor(a.length / 3)), strong = a.slice(-Math.floor(a.length / 3));
+    assert.ok(mean(weak) > mean(strong), `${tier}: weak ${mean(weak)} vs strong ${mean(strong)}`);
+  }
+});
+
+// Antes: «rarity 1-3 use no conditional templates; rarity 5 may». Ahora la regla es de bandeja.
+test('every effect exists with an integer value in range, from its own tier or a lower one', () => {
+  const G = data(), RANK = { basic: 0, adv: 1, supreme: 2 };
+  for (const [r, e] of Object.entries(G.PASSIVES_UNIQUE)) {
+    const ids = e.fx.map(f => f[0]);
+    assert.equal(new Set(ids).size, ids.length, `root ${r}: repeated effect`);
+    for (const [id, v] of e.fx) {
+      const t = tplOf(G, id);
+      assert.ok(t, `root ${r}: ${id}`);
+      assert.ok(Number.isInteger(v) && v >= t.min && v <= t.max, `root ${r}: ${id}=${v}`);
+      if (t.tier) assert.ok(RANK[t.tier] <= RANK[e.tier], `root ${r} (${e.tier}): ${id} is ${t.tier}`);
+    }
+    assert.ok(ids.some(id => tplOf(G, id).tier === e.tier), `root ${r}: no ${e.tier} effect`);
+  }
+});
+
+test('critDmg is never alone: every common or unique that has it also has critChance', () => {
   const G = data();
-  for (const p of G.DEX.filter(p => p.rarity <= 3)) {
-    for (const [id] of G.PASSIVES[p.dex].fx) assert.ok(!G.PassiveFX.TEMPLATES[id].cond, `dex ${p.dex}: ${id}`);
+  for (const [k, p] of [...Object.entries(G.PASSIVES_COMMON), ...Object.entries(G.PASSIVES_UNIQUE)]) {
+    const ids = p.fx.map(f => f[0]);
+    if (ids.includes('critDmg')) assert.ok(ids.includes('critChance'), `${k}: ${ids}`);
   }
-  assert.ok(G.DEX.some(p => p.rarity === 5 && G.PASSIVES[p.dex].fx.some(([id]) => G.PassiveFX.TEMPLATES[id].cond)));
 });
-test('higher rarity never has a weaker passive', () => {
-  const G = data(), top = {};
-  for (const p of G.DEX) {
-    const w = G.PassiveFX.power(G.PASSIVES[p.dex].fx);
-    top[p.rarity] = top[p.rarity] ? { lo: Math.min(top[p.rarity].lo, w), hi: Math.max(top[p.rarity].hi, w) } : { lo: w, hi: w };
+
+test('hand designs cover every starter, legendary and mythical line', () => {
+  const G = data(), design = JSON.parse(source('tools/passive_design.json'));
+  const root = d => { const l = G.Mons.lineage(d); return l.length ? l[0] : d; };
+  for (const p of G.DEX.filter(p => p.leg || p.starter)) {
+    const r = root(p.dex), d = design[r];
+    assert.ok(d, `${p.name}: line ${r} has no hand design`);
+    assert.equal(G.PASSIVES_UNIQUE[r].n, d[0], p.name);
+    assert.deepEqual(G.PASSIVES_UNIQUE[r].fx.map(f => f[0]), d.slice(1), p.name);
   }
-  for (let r = 2; r <= 5; r++) assert.ok(top[r].lo > top[r - 1].hi, `rarity ${r} min ${top[r].lo} vs ${r - 1} max ${top[r - 1].hi}`);
+  for (const k of Object.keys(design)) assert.ok(G.PASSIVES_UNIQUE[k], 'design for a non-root dex ' + k);
 });
 
 // ---------------- motor: AbilityFX.of(mon), Mons.abilityOf ----------------
 function engine(db) {
-  const G = world('js/data/pokedex.js', 'js/data/passive-fx.js', 'js/data/passives.js', 'js/data/ability-fx.js');
+  const G = world(...DATA, 'js/data/ability-fx.js');
   G.DB = { save: db || {} };
   new Function('G', source('js/systems/mons.js'))(G);
+  new Function('G', source('js/systems/rank.js'))(G);
   return G;
 }
-test('AbilityFX.of(mon) returns the passive built from PASSIVES', () => {
-  const G = engine(), mon = G.DEX_BY[6];
+const dText = (G, p, mon) => G.PassiveFX.build(p, mon).d;
+const COMMON = (G, mon, k) => ({ n: 'X', fx: G.PassiveFX.scale(G.PASSIVES_COMMON[mon.types[0]].fx, k) });
+
+test('AbilityFX.of at 0 stars has only the common passive of its primary type', () => {
+  const G = engine(), mon = G.DEX_BY[4], u = G.PASSIVES_UNIQUE[4];
   const fx = G.AbilityFX.of(mon);
-  assert.equal(fx.d, G.PassiveFX.build(G.PASSIVES[6], mon).d);
-  assert.equal(fx.name, G.PASSIVES[6].n);
+  assert.equal(fx.d, dText(G, COMMON(G, mon, 1), mon));
+  assert.equal(fx.name, G.PASSIVES_COMMON.fire.n);
+  assert.ok(!fx.d.includes(dText(G, u, mon)));
   assert.ok(!fx.generic);
 });
+
+test('AbilityFX.of at 3 stars adds the unique: both texts and the unique name', () => {
+  const G = engine({ dupes: { 4: 3 } }), mon = G.DEX_BY[4], u = G.PASSIVES_UNIQUE[4];
+  const fx = G.AbilityFX.of(mon);
+  assert.equal(fx.name, u.n);
+  assert.equal(fx.d, dText(G, COMMON(G, mon, 1), mon) + ' ' + dText(G, u, mon));
+});
+
+test('AbilityFX.of at 6 stars scales the common x1.2; at 10 stars both x1.5', () => {
+  const G0 = engine(), G6 = engine({ dupes: { 4: 7 } }), G10 = engine({ dupes: { 4: 15 } }), mon = G0.DEX_BY[4];
+  const u = G0.PASSIVES_UNIQUE[4];
+  const c0 = dText(G0, COMMON(G0, mon, 1), mon), c6 = dText(G6, COMMON(G6, mon, 1.2), mon);
+  assert.notEqual(c6, c0);
+  assert.equal(G6.AbilityFX.of(mon).d, c6 + ' ' + dText(G6, u, mon));
+  const u10 = { n: u.n, fx: G10.PassiveFX.scale(u.fx, 1.5) };
+  assert.equal(G10.AbilityFX.of(mon).d, dText(G10, COMMON(G10, mon, 1.5), mon) + ' ' + dText(G10, u10, mon));
+});
+
+test('evolving keeps the unique name while the common grows by stage (x1.0 / x1.3 / x1.6)', () => {
+  const G = engine({ dupes: { 4: 3 } }), u = G.PASSIVES_UNIQUE[4];
+  const texts = [4, 5, 6].map((dex, i) => {
+    const mon = G.DEX_BY[dex], fx = G.AbilityFX.of(mon);
+    assert.equal(fx.name, u.n, 'dex ' + dex);
+    assert.equal(fx.d, dText(G, COMMON(G, mon, [1, 1.3, 1.6][i]), mon) + ' ' + dText(G, u, mon), 'dex ' + dex);
+    return fx.d;
+  });
+  assert.equal(new Set(texts).size, 3);
+  assert.deepEqual(G.AbilityFX.STAGE_MUL, [1, 1.3, 1.6]);
+});
+
+test('AbilityFX.of options override the Rank and stage defaults', () => {
+  const G = engine(), mon = G.DEX_BY[4], u = G.PASSIVES_UNIQUE[4];
+  const fx = G.AbilityFX.of(mon, { stage: 3, uniqueOn: true, uniqueMul: 1.25, commonMul: 1.2 });
+  const uu = { n: u.n, fx: G.PassiveFX.scale(u.fx, 1.25) };
+  assert.equal(fx.d, dText(G, COMMON(G, mon, 1.6 * 1.2), mon) + ' ' + dText(G, uu, mon));
+  assert.equal(fx.name, u.n);
+});
+
+test('the merged effect runs the hooks of both passives', () => {
+  const G = engine(), mon = { dex: 4, types: ['fire'] };
+  const fx = G.AbilityFX.of(mon, { uniqueOn: true });
+  const c = G.PassiveFX.build(G.PASSIVES_COMMON.fire, mon), u = G.PassiveFX.build(G.PASSIVES_UNIQUE[4], mon);
+  const pl = fresh(), m = { type: 'fire', kind: 'projectile' }, e = { hp: 100, maxHp: 100 };
+  const want = (c.out ? c.out(fresh(), m, e) : 1) * (u.out ? u.out(fresh(), m, e) : 1);
+  assert.ok(Math.abs((fx.out ? fx.out(pl, m, e) : 1) - want) < 1e-9);
+});
+
+test('a Mega gets the unique of its line root and the top stage factor', () => {
+  const G = engine({ dupes: { 4: 3 } }), mega = G.DEX_BY[10001];
+  assert.equal(G.MEGA_FROM[10001], 6);
+  assert.equal(G.PASSIVES_UNIQUE[10001], undefined);
+  const fx = G.AbilityFX.of(mega);
+  assert.equal(fx.name, G.PASSIVES_UNIQUE[4].n);
+  assert.ok(fx.d.startsWith(dText(G, COMMON(G, mega, 1.6), mega)));
+});
+
 test('AbilityFX.of falls back to the generic passive when the dex has no entry', () => {
   const G = engine();
-  assert.equal(G.AbilityFX.of({ dex: 99999, types: ['fire'] }).generic, true);
+  assert.equal(G.AbilityFX.of({ dex: 99999, types: ['fire'] }).generic, true);    // dex desconocido
+  const bare = world('js/data/passive-fx.js', 'js/data/ability-fx.js');
+  assert.equal(bare.AbilityFX.of({ dex: 99999, types: ['fire'] }).generic, true);
 });
+
+test('AbilityFX.of without Rank or Mons loaded counts as 0 stars and the first stage', () => {
+  const G = world(...DATA, 'js/data/ability-fx.js'), mon = G.DEX_BY[6];
+  const fx = G.AbilityFX.of(mon);
+  assert.equal(fx.name, G.PASSIVES_COMMON.fire.n);
+  assert.equal(fx.d, dText(G, COMMON(G, mon, 1), mon));
+});
+
 test('old save with pabil and capsule counts is ignored', () => {
   const G = engine({ pabil: { 1: [2, 0] }, shop: { cap: 3, caph: 1 } });
   const a = G.Mons.abilityOf(1);
-  assert.equal(a.name, G.PASSIVES[1].n);
+  assert.equal(a.name, G.PASSIVES_COMMON.grass.n);
   assert.equal(a.slot, 0);
   assert.equal(G.Mons.abilityChoices, undefined);
   assert.equal(G.Mons.setAbility, undefined);
 });
-test('passive description is English text for every Pokémon', () => {
-  const G = engine();
-  for (const p of G.DEX) {
-    const a = G.Mons.abilityOf(p.dex);
-    assert.ok(a.desc.length > 5 && !/[áéíóúñ¿¡]/.test(a.desc) && !/NaN|undefined/.test(a.desc), `dex ${p.dex}: ${a.desc}`);
+
+test('abilityOf shows the unique, locked below 3 stars', () => {
+  const G = engine({ dupes: { 1: 2 } }), u = G.PASSIVES_UNIQUE[1];
+  const a = G.Mons.abilityOf(2);
+  assert.deepEqual(Object.keys(a).sort(), ['desc', 'id', 'name', 'slot', 'unique']);
+  assert.equal(a.id, '2');
+  assert.equal(a.unique.name, u.n);
+  assert.equal(a.unique.desc, dText(G, u, G.DEX_BY[2]));
+  assert.equal(a.unique.locked, true);
+  assert.ok(!a.desc.includes(a.unique.desc));
+  G.DB.save.dupes[1] = 3;
+  const b = G.Mons.abilityOf(2);
+  assert.equal(b.unique.locked, false);
+  assert.equal(b.name, u.n);
+  assert.ok(b.desc.endsWith(b.unique.desc));
+});
+
+test('passive description is English text for every Pokémon, locked or not', () => {
+  for (const db of [{}, { dupes: Object.fromEntries([...Array(1100).keys()].map(d => [d, 15])) }]) {
+    const G = engine(db);
+    for (const p of G.DEX) {
+      const a = G.Mons.abilityOf(p.dex);
+      for (const s of [a.desc, a.name, a.unique.name, a.unique.desc]) {
+        assert.ok(s.length > 3 && !/[áéíóúñ¿¡]/.test(s) && !/NaN|undefined/.test(s), `dex ${p.dex}: ${s}`);
+      }
+    }
   }
 });
+
 test('new scripts load before ability-fx.js and PassiveFX is required at boot', () => {
   const html = source('dev.html'), at = f => html.indexOf(`src="js/data/${f}"`);
   assert.ok(at('passive-fx.js') > 0 && at('passives.js') > at('passive-fx.js') && at('ability-fx.js') > at('passives.js'));
@@ -180,14 +349,14 @@ test('no UI or system file references the removed ability APIs', () => {
   }
   assert.doesNotMatch(source('js/game.js'), removed);
 });
-
-test('critDmg is never alone: every passive that has it also has critChance', () => {
-  const G = data();
-  for (const p of G.DEX) {
-    const ids = G.PASSIVES[p.dex].fx.map(f => f[0]);
-    if (ids.includes('critDmg')) assert.ok(ids.includes('critChance'), `dex ${p.dex} (${p.name}): ${ids}`);
+test('no game file reads the removed G.PASSIVES table', () => {
+  const walk = d => fs.readdirSync(path.join(__dirname, '..', d), { withFileTypes: true })
+    .flatMap(e => (e.isDirectory() ? walk(`${d}/${e.name}`) : e.name.endsWith('.js') ? [`${d}/${e.name}`] : []));
+  for (const f of [...walk('js').filter(f => f !== 'js/app.min.js'), 'tools/fetch_mega.js', 'tools/export_data.js']) {
+    assert.doesNotMatch(source(f), /G\.PASSIVES\b(?!_)/, f);
   }
 });
+
 test('critDmg text states the real multiplier', () => {
   const { PassiveFX: P } = world('js/data/passive-fx.js');
   assert.match(P.build({ n: 'X', fx: [['critDmg', 30]] }, MONS[0]).d, /x1\.8/);
@@ -387,7 +556,8 @@ test('reviveOnce revives exactly once per player', () => {
   assert.equal(a.revive(other), true);                 // otro jugador (otra run) tiene la suya
 });
 
-test('Player death path asks abil.revive and cancels the death once', () => {
+/** G con lo justo para crear un G.Player. */
+function playerWorld() {
   const G = { U: { TYPE_NAME: {}, TYPE_COLOR: {} }, Types: { mult: () => 1, label: () => null }, Weather: { mult: () => 1, current: null } };
   for (const f of ['js/data/pokedex.js', 'js/data/passive-fx.js', 'js/data/passive-unique-fx.js', 'js/data/passives.js', 'js/data/ability-fx.js']) new Function('G', source(f))(G);
   G.Sprites = { hasShiny: () => false, playerScale: () => 1, playerRadius: () => 10, bodyHeight: () => 30, Animator: class { play() {} } };
@@ -395,6 +565,11 @@ test('Player death path asks abil.revive and cancels the death once', () => {
   G.Audio = { sfx() {} }; G.Camera = { kick() {} }; G.Pad = { rumble() {} };
   G.FX = { dmgText() {}, burst() {}, ring() {} }; G.Projectiles = { clearOrbs() {} };
   new Function('G', source('js/entities/player.js'))(G);
+  return G;
+}
+
+test('Player death path asks abil.revive and cancels the death once', () => {
+  const G = playerWorld();
   const pl = new G.Player(G.DEX_BY[4]); pl.activeGroup = () => []; pl.x = 0; pl.y = 0;
   pl.abil = G.PassiveFX.build({ n: 'X', fx: [['reviveOnce', 50]] }, G.DEX_BY[4]);
   pl.hurt(99999);
@@ -405,6 +580,39 @@ test('Player death path asks abil.revive and cancels the death once', () => {
   pl.hurt(99999);
   assert.equal(pl.dead, true);
   assert.equal(pl.hp, 0);
+});
+
+test('Player.PASSIVE_STATE clears every per-run unique counter on evolution, but not reviveUsed', () => {
+  const G = playerWorld(), STATE = G.Player.PASSIVE_STATE;
+  // Campos del jugador que no son estado de la pasiva (o que la pasiva ya deshace aparte).
+  const NOT_STATE = new Set(['hp', 'maxHp', 'invuln', 'coinMul', 'reviveUsed']);
+  const foe = () => { const e = { x: 0, y: 0, hp: 1e9, maxHp: 1e9, dead: false, boss: true, slowT: 1, types: [] };
+    e.hurt = () => {}; e.applySlow = () => {}; e.applyBurn = () => {}; return e; };
+  const foes = [foe(), foe()];
+  G.EnemyMgr = { queryCircle: () => foes }; G.Pickups = { drop() {} };
+  for (const [id, t] of Object.entries(G.UniqueFX.TEMPLATES)) {
+    const written = new Set();
+    const pl = new Proxy(Object.assign(fresh(), { x: 0, y: 0, bodyH: 20, heal() {} }),
+      { set(o, k, v) { written.add(k); o[k] = v; return true; } });
+    const h = t.hooks(t.max, MONS[0]), m = { kind: 'projectile', type: 'fire' };
+    if (h.start) h.start(pl);
+    for (let i = 0; i < 40; i++) {
+      if (h.out) h.out(pl, m, foes[0]);
+      if (h.hit) h.hit(pl, foes[0], m);
+      if (h.kill) h.kill(pl, foes[0]);
+      if (h.tick) h.tick(pl, 0.5);
+      if (h.dodge) h.dodge(pl);
+      if (h.inMul) h.inMul(pl);
+      if (h.speed) h.speed(pl);
+      if (h.contact) h.contact(pl, foes[0]);
+      pl.hp = 10;
+      if (h.hurt) h.hurt(pl);
+      if (h.revive) h.revive(pl);
+    }
+    for (const k of written) if (!NOT_STATE.has(k)) assert.ok(STATE.includes(k), `${id} keeps ${k} on the player`);
+  }
+  assert.ok(!STATE.includes('reviveUsed'));
+  for (const k of ['streakN', 'streakT', 'pulseT', 'hurtBoostT', 'moxie']) assert.ok(STATE.includes(k), k);
 });
 
 test('dev.html loads the common and unique catalogs before passives.js; NEED has UniqueFX and Rank', () => {

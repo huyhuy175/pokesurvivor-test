@@ -257,15 +257,48 @@ G.AbilityFX = (() => {
     return { generic: true, d: '+8% damage with ' + (G.T ? G.T(TN(t)) : TN(t)) + ' moves.', out: (pl, m) => (m.type === t ? 1.08 : 1) };
   }
 
+  /** × a la pasiva común según la forma de evolución: forma base, 1.ª evolución, 2.ª (o Mega de una final). */
+  const STAGE_MUL = [1, 1.3, 1.6];
+
   /**
-   * Pasiva del Pokémon `mon` (nunca null): la suya de data/passives.js, construida
-   * por G.PassiveFX. Si no tiene (datos futuros), la genérica de su tipo.
-   * (Las habilidades de PokeAPI de FX ya no se usan; se conservan por si vuelven.)
+   * Las dos pasivas de `mon` sin construir:
+   *   common: la de su tipo principal (data/passives-common.js), ya escalada por forma × commonMul;
+   *   unique: la de su línea evolutiva (data/passives.js, por forma base), escalada por uniqueMul,
+   *           aunque esté bloqueada (on dice si cuenta).
+   * opts (todos opcionales) pisan lo que sale del Rank (G.Rank.bonus) y de la forma
+   * (G.Mons.lineage: una Mega cuenta como una evolución más). stage: 1-3.
+   * Sin Rank (o sin Mons) cuenta como 0 estrellas y forma base.
    */
-  function of(mon) {
-    const p = G.PASSIVES && G.PASSIVES[mon.dex];
-    return p ? G.PassiveFX.build(p, mon) : generic(mon);
+  function parts(mon, opts) {
+    const has = !!(G.DEX_BY && G.DEX_BY[mon.dex]);
+    const line = has && G.Mons && G.Mons.lineage ? G.Mons.lineage(mon.dex) : [];
+    const rank = has && G.Rank && G.Rank.bonus ? G.Rank.bonus(mon.dex) : {};
+    const o = Object.assign({ stage: line.length + 1, commonMul: rank.commonMul || 1,
+      uniqueMul: rank.uniqueMul || 1, uniqueOn: !!rank.uniqueOn }, opts);
+    const stage = Math.max(1, Math.min(STAGE_MUL.length, Math.round(o.stage) || 1));
+    const c = G.PASSIVES_COMMON && G.PASSIVES_COMMON[mon.types[0]];
+    const u = has && G.UniqueFX && G.PASSIVES_UNIQUE && G.PASSIVES_UNIQUE[line.length ? line[0] : mon.dex];
+    return {
+      common: c ? { n: c.n, fx: G.PassiveFX.scale(c.fx, STAGE_MUL[stage - 1] * o.commonMul) } : null,
+      unique: u ? { n: u.n, tier: u.tier, fx: G.PassiveFX.scale(u.fx, o.uniqueMul) } : null,
+      on: !!u && o.uniqueOn
+    };
   }
 
-  return { FX, of };
+  /**
+   * Pasiva del Pokémon `mon` (nunca null): la común de su tipo y, si está desbloqueada
+   * (3★), la unique de su línea, juntas en un solo efecto (G.PassiveFX.build): ganchos de
+   * las dos, descripción de las dos y el nombre de la unique (si no, el de la común).
+   * Si no hay datos (dex desconocido, datos sin cargar), la genérica de su tipo.
+   * (Las habilidades de PokeAPI de FX ya no se usan; se conservan por si vuelven.)
+   */
+  function of(mon, opts) {
+    if (!G.DEX_BY || !G.DEX_BY[mon.dex]) return generic(mon);
+    const p = parts(mon, opts), u = p.on ? p.unique : null;
+    if (!p.common && !u) return generic(mon);
+    const fx = [...(p.common ? p.common.fx : []), ...(u ? u.fx : [])];
+    return G.PassiveFX.build({ n: u ? u.n : p.common.n, fx }, mon);
+  }
+
+  return { FX, STAGE_MUL, parts, of };
 })();

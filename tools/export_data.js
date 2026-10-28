@@ -23,9 +23,25 @@ const add = G.I18n.add;
 G.I18n.add = (d, language = 'en', context = '') => { if (language === 'en' && !context) Object.assign(EN, d); add(d, language, context); };
 for (const f of ['js/data/lang-en.js', 'js/core/settings.js', 'js/data/pokedex.js', 'js/data/sprites-meta.js', 'js/data/moves.js', 'js/data/types.js',
                  'js/data/items.js', 'js/systems/orbs.js', 'js/data/achievements.js', 'js/world/tiles.js', 'js/data/funding.js',
-                 'js/data/changelog.js']) {
+                 'js/data/changelog.js', 'js/data/evolutions.js', 'js/data/mega.js', 'js/systems/mons.js',
+                 'js/data/passive-fx.js', 'js/data/passive-unique-fx.js', 'js/data/passives-common.js', 'js/data/passives.js',
+                 'js/data/ability-fx.js']) {
   try { load(f); } catch (e) { console.warn('aviso', f, e.message); }
 }
+// Pasivas: la común de cada tipo (tipo principal, desde 0★, crece con la forma) y la unique de cada
+// línea evolutiva (por su forma base, se abre a 3★). Textos ya en inglés (los del juego).
+const lineOf = {};
+for (const p of G.DEX) {
+  const l = G.Mons.lineage(p.dex), r = l.length ? l[0] : p.dex;
+  (lineOf[r] = lineOf[r] || []).push(p.dex);
+}
+const passives = {
+  stageMul: G.AbilityFX.STAGE_MUL,
+  common: Object.fromEntries(Object.entries(G.PASSIVES_COMMON).map(([t, p]) =>
+    [t, { name: p.n, desc: G.PassiveFX.build(p, { types: [t] }).d }])),
+  unique: Object.entries(G.PASSIVES_UNIQUE).map(([r, u]) =>
+    ({ root: +r, line: lineOf[r], name: u.n, tier: u.tier, desc: G.PassiveFX.build(u, G.DEX_BY[r]).d }))
+};
 const moves = Object.values(G.Moves.BY_ID).map(m => {
   const inst = G.Moves.instance(m.id, m.maxLvl || 5);
   const evo = G.Moves.evoInfo(inst, {});
@@ -49,10 +65,11 @@ const out = {
   funding: { kofi: G.Funding.kofi, sponsors: G.Funding.sponsors, costs: G.Funding.costs },
   // Las novedades de la web salen de las del juego (antes era una lista aparte que se quedaba atrás).
   changelog: G.CHANGELOG || [],
+  passives,
   en: EN
 };
 fs.mkdirSync(path.join(__dirname, 'cache'), { recursive: true });
 fs.writeFileSync(path.join(__dirname, 'cache', 'gamedata.json'), JSON.stringify(out));
 console.log('ok:', out.dex.length, 'Pokémon,', out.moves.length, 'movimientos,', out.items.length, 'objetos,', out.achievements.length, 'logros,',
-  Object.keys(out.arenas).length, 'arenas,', Object.keys(out.en).length, 'traducciones');
+  Object.keys(out.arenas).length, 'arenas,', passives.unique.length, 'pasivas unique,', Object.keys(out.en).length, 'traducciones');
 

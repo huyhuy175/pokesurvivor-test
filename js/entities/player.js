@@ -180,7 +180,14 @@ G.Player = class Player {
   /** Campos que toca la pasiva al empezar: aditivos, multiplicativos y estado suelto. */
   static get PASSIVE_ADD() { return ['critChance', 'regenFlat', 'maxHp']; }
   static get PASSIVE_MUL() { return ['magnet', 'xpMul', 'coinMul', 'cdMul']; }
-  static get PASSIVE_STATE() { return ['streakN', 'streakT', 'pulseT', 'hurtBoostT', 'moxie']; }
+  // Contadores y recargas de las pasivas (también las unique, data/passive-unique-fx.js). No
+  // está reviveUsed: «una vez por partida» vale para toda la run, aunque evolucione.
+  static get PASSIVE_STATE() {
+    return ['streakN', 'streakT', 'pulseT', 'hurtBoostT', 'moxie',
+      'thornT', 'sokT', 'shieldHits', 'xpBurstN', 'slowAuraT', 'critStreakN', 'comebackT',
+      'killNovaN', 'hurtNovaT', 'orbitT', 'dashHurtT', 'comboN', 'healPulseN', 'barrierCd',
+      'stormT', 'domainT', 'rageN', 'rageT'];
+  }
   static passiveFields(p) {
     const o = {};
     for (const k of [...Player.PASSIVE_ADD, ...Player.PASSIVE_MUL]) o[k] = p[k];

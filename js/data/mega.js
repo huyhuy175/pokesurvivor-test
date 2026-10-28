@@ -1,6 +1,6 @@
 /* ============ mega.js — GENERADO por tools/fetch_mega.js, no editar a mano ============
  * Megaevoluciones (datos de PokeAPI). Filas aparte de G.DEX: sólo están en G.DEX_BY, así que ni
- * salen de enemigo, ni del gacha, ni cuentan en la Pokédex. Hereda la pasiva de su forma base.
+ * salen de enemigo, ni del gacha, ni cuentan en la Pokédex. Su pasiva sale de su línea (G.AbilityFX.of, por G.Mons.lineage).
  * G.MEGA[base] = [megas] · G.MEGA_FROM[mega] = base · G.isMega(dex).
  * Los sprites que falten se sustituyen por los de la forma base con un aura (core/sprites.js).
  */
@@ -106,6 +106,5 @@ for (const m of G.MEGA_DEX) {
   (G.MEGA[m.mega] = G.MEGA[m.mega] || []).push(m.dex);
   G.MEGA_FROM[m.dex] = m.mega;
   G.DEX_BY[m.dex] = m;
-  if (G.PASSIVES && G.PASSIVES[m.mega]) G.PASSIVES[m.dex] = G.PASSIVES[m.mega];
 }
 G.isMega = dex => dex >= 10000 && !!G.MEGA_FROM[dex];

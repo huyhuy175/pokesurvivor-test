@@ -290,6 +290,32 @@ def dexcard(e, lang, up):
     return (f'<li id="p{d}">{sprite(d, up=up)}<span class="n">#{d:03d}</span><span class="nm">{esc(e["name"])}</span>'
             f'<span class="tys">{"".join(tbadge(t, lang) for t in e.get("types", []))}</span>{tag}</li>')
 
+TIER = {'basic': ('Básica', 'Basic'), 'adv': ('Avanzada', 'Advanced'), 'supreme': ('Suprema', 'Supreme')}
+def passives_sec(lang):
+    """Pasivas: la común de cada tipo y la unique de cada línea evolutiva (nombres y textos del juego, en inglés)."""
+    P = D['passives']; i = 0 if lang == 'es' else 1
+    mul = ' / '.join(('×' + f'{k:g}').replace('.', ',' if lang == 'es' else '.') for k in P['stageMul'])
+    common = ''.join(f'<tr><td>{tbadge(t, lang)}</td><td><b>{esc(P["common"][t]["name"])}</b></td><td>{esc(P["common"][t]["desc"])}</td></tr>'
+                     for t in TYPES if t in P['common'])
+    def line(u):
+        rest = [BY[d]['name'] for d in u['line'] if d != u['root']]
+        return esc(BY[u['root']]['name']) + (' → ' + esc(', '.join(rest)) if rest else '')
+    unique = ''.join(f'<tr><td>{line(u)}</td><td><b>{esc(u["name"])}</b></td><td>{TIER[u["tier"]][i]}</td><td>{esc(u["desc"])}</td></tr>'
+                     for u in P['unique'])
+    if lang == 'es':
+        intro = (f'<p>Cada Pokémon tiene dos pasivas. La <b>común</b> va con su tipo principal, la tiene desde el principio y crece al evolucionar '
+                 f'({mul} según la forma). La <b>única</b> es de su línea evolutiva: se desbloquea con <b>3 estrellas</b> (copias repetidas en el gacha) '
+                 f'y se queda al evolucionar. Las de los Pokémon más raros, legendarios y singulares cambian más la forma de jugar.</p>')
+        h, hc, hu, th = 'Pasivas', 'Pasiva común de cada tipo', f'Pasiva única de cada línea evolutiva ({len(P["unique"])})', ('Línea', 'Pasiva', 'Clase', 'Qué hace')
+    else:
+        intro = (f'<p>Every Pokémon has two passives. The <b>common</b> one comes from its main type, works from the start and grows as it evolves '
+                 f'({mul} by form). The <b>unique</b> one belongs to its evolution line: it unlocks at <b>3 stars</b> (duplicate copies from the gacha) '
+                 f'and stays when it evolves. Those of rarer Pokémon, legendaries and mythicals change the way you play the most.</p>')
+        h, hc, hu, th = 'Passives', 'Common passive of each type', f'Unique passive of each evolution line ({len(P["unique"])})', ('Line', 'Passive', 'Class', 'What it does')
+    return (f'<section id="passives"><h2>{h}</h2>{intro}<h3>{hc}</h3><div class="tablewrap"><table class="list"><tbody>{common}</tbody></table></div>'
+            f'<details><summary><b>{hu}</b></summary><div class="tablewrap"><table class="list"><thead><tr>{"".join(f"<th>{x}</th>" for x in th)}</tr></thead>'
+            f'<tbody>{unique}</tbody></table></div></details></section>')
+
 def pokedex(lang):
     pid = 'pokedex'; up = upof(pid, lang)
     secs = []
@@ -299,6 +325,7 @@ def pokedex(lang):
         head = f'(generación {g} · {len(mons)} Pokémon)' if lang == 'es' else f'(generation {g} · {len(mons)} Pokémon)'
         secs.append(f'<section id="{gn.lower()}"><h2>{gn} <small>{head}</small></h2><ul class="dexgrid">{"".join(dexcard(e, lang, up) for e in mons)}</ul></section>')
     gens = ''.join(f'<a href="#{gen_name(g, lang).lower()}">{gen_name(g, lang)}</a>' for g in range(1, 10))
+    gens += f'<a href="#passives">{"Pasivas" if lang == "es" else "Passives"}</a>'
     if lang == 'es':
         h1, lead, c = f'Pokédex de PokéSurvivor: los {N} Pokémon jugables', (f'Todos estos Pokémon pueden ser tu compañero en PokéSurvivor, el juego gratis de supervivencia con Pokémon para '
               f'navegador y móvil. Hay {N} de las 9 regiones; los consigues como compañero inicial o en el gacha (con tickets que se ganan jugando), y también '
@@ -309,7 +336,7 @@ def pokedex(lang):
               f'There are {N} from all 9 regions; you get them as a starter or from the gacha (with tickets you earn by playing), and they also show up as wild '
               f'enemies, bosses and legendaries in rifts.'), 'Pick your partner and play free'
         title, desc = f'PokéSurvivor Pokédex: all {N} playable Pokémon (9 regions)', f'The full list of the {N} Pokémon you can play in PokéSurvivor, from Kanto to Paldea, with their types. A free Pokémon game in your browser.'
-    body = f'<article class="doc wide"><h1>{esc(h1)}</h1><p class="lead">{esc(lead)}</p><nav class="gens">{gens}</nav>{"".join(secs)}{cta(pid, lang, c)}</article>'
+    body = f'<article class="doc wide"><h1>{esc(h1)}</h1><p class="lead">{esc(lead)}</p><nav class="gens">{gens}</nav>{"".join(secs)}{passives_sec(lang)}{cta(pid, lang, c)}</article>'
     ld = {'@context': 'https://schema.org', '@graph': [{'@type': 'CollectionPage', 'name': h1, 'url': SITE + PATH[lang][pid], 'inLanguage': lang}, crumbs(pid, lang, 'Pokédex')]}
     write(pid, lang, page(pid, lang, title, desc, body, ld))
 

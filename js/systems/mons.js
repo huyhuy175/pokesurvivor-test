@@ -4,8 +4,8 @@
  * Cada Pokémon de tu colección tiene:
  *   - NATURALEZA (data/natures.js): +10 % a un stat y −10 % a otro, como en los
  *     juegos (5 son neutras). Se cambia con una Menta.
- *   - PASIVA propia (data/passives.js, efectos en data/passive-fx.js): fija, según su
- *     rareza. Ya no hay Cápsulas de Habilidad.
+ *   - PASIVA: la común de su tipo (data/passives-common.js) y la unique de su línea
+ *     evolutiva (data/passives.js), que se abre a 3★ (G.Rank). Ya no hay Cápsulas de Habilidad.
  *   - MT aprendidas: ataques que no son de sus tipos pero sí los aprende en los
  *     juegos (Mewtwo, Bola Sombra; Psyduck, Lanzallamas no). Salen en sus cartas
  *     de nivel y se pueden elegir de movimiento inicial (G.Moves.poolFor).
@@ -69,13 +69,19 @@ G.Mons = (() => {
   // ---------------- pasiva ----------------
 
   /**
-   * Su pasiva propia (data/passives.js): { id, name, desc, slot }. Es fija: ya no hay
-   * huecos de habilidad ni Cápsulas (save.pabil de partidas antiguas se ignora).
-   * name y desc van sólo en inglés.
+   * Su pasiva: { id, name, desc, slot, unique: { name, desc, locked } }. name y desc son las del
+   * efecto que lleva ahora (G.AbilityFX.of: la común de su tipo y, desde 3★, la unique de su
+   * línea); unique es la de su línea aunque esté bloqueada (locked por debajo de 3★). Ya no hay
+   * huecos de habilidad ni Cápsulas (save.pabil de partidas antiguas se ignora). Sólo en inglés.
    */
   function abilityOf(dex) {
-    const p = G.PASSIVES && G.PASSIVES[dex], mon = G.DEX_BY[dex];
-    return { id: String(dex), name: p ? p.n : '', desc: p && mon ? G.AbilityFX.of(mon).d : '', slot: 0 };
+    const mon = G.DEX_BY[dex];
+    if (!mon) return { id: String(dex), name: '', desc: '', slot: 0, unique: { name: '', desc: '', locked: true } };
+    const fx = G.AbilityFX.of(mon), p = G.AbilityFX.parts(mon), u = p.unique;
+    return {
+      id: String(dex), name: fx.name || '', desc: fx.d, slot: 0,
+      unique: { name: u ? u.n : '', desc: u ? G.PassiveFX.build(u, mon).d : '', locked: !p.on }
+    };
   }
 
   // ---------------- MT ----------------

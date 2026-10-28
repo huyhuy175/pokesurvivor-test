@@ -94,7 +94,8 @@ test('cards: one per owned target; applying one evolves, consumes the stone and 
 
 // ---------------- Player.evolve ----------------
 function playerWorld() {
-  const G = world('js/data/pokedex.js', 'js/data/passive-fx.js', 'js/data/passives.js', 'js/data/ability-fx.js');
+  const G = world('js/data/pokedex.js', 'js/data/passive-fx.js', 'js/data/passive-unique-fx.js', 'js/data/passives-common.js',
+    'js/data/passives.js', 'js/data/ability-fx.js');
   G.Sprites = {
     hasShiny: () => false, playerScale: () => 1, playerRadius: () => 10, bodyHeight: () => 30,
     preload: () => Promise.resolve(), Animator: class { constructor(dex) { this.dex = dex; } play() {} }

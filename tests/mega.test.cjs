@@ -27,13 +27,17 @@ test('mega data: every Mega has a valid base, is listed, and stays out of G.DEX'
   }
 });
 
-test('mega data: a Mega is stronger than its base and inherits its passive', () => {
+test('mega data: a Mega is stronger than its base and its unique comes from its line root', () => {
   const G = world(DATA);
+  new Function('G', source('js/systems/mons.js'))(G);
+  assert.equal(G.PASSIVES, undefined);
   for (const m of G.MEGA_DEX) {
     const b = G.DEX_BY[m.mega];
     assert.ok(m.bst > b.bst, m.name);
     assert.ok(m.hp >= b.hp && m.spd >= b.spd && m.atk >= b.atk, m.name);
-    assert.equal(G.PASSIVES[m.dex], G.PASSIVES[m.mega]);
+    const line = G.Mons.lineage(m.dex);
+    assert.equal(G.PASSIVES_UNIQUE[m.dex], undefined, m.name);
+    assert.ok(G.PASSIVES_UNIQUE[line[0]], m.name + ' root ' + line[0]);
   }
 });
 
