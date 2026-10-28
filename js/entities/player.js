@@ -417,6 +417,8 @@ G.Player = class Player {
       G.FX.dmgText(this.x, this.y - this.bodyH - 16, '¡Robustez!', '#c9b48a', true);
       G.FX.ring(this.x, this.y, 6, 70, '#c9b48a', 0.5, 4);
     }
+    // Pasiva unique que revive (data/passive-unique-fx.js): si devuelve true, no cae.
+    if (this.hp <= 0 && ab && ab.revive && ab.revive(this)) this.invuln = 1.5;
     if (ab && ab.hurt && this.hp > 0) ab.hurt(this, type, cls);
     if (this.hp <= 0) {
       this.hp = 0; this.dead = true;

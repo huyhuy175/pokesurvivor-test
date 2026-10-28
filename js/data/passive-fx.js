@@ -85,16 +85,30 @@ G.PassiveFX = (() => {
   /** Banda de poder por rareza: [mín, máx]. */
   const BANDS = { 1: [2, 3], 2: [4, 5], 3: [6, 8], 4: [10, 13], 5: [16, 20] };
 
+  /** Plantilla de un id: las comunes de aquí y, si está cargado, el catálogo unique (data/passive-unique-fx.js). */
+  const tpl = id => TEMPLATES[id] || (G.UniqueFX && G.UniqueFX.TEMPLATES[id]);
+
   const round = x => Math.round(x * 1000) / 1000;
-  const power = fx => round(fx.reduce((s, [id, ...v]) => s + TEMPLATES[id].cost * v[0], 0));
+  const power = fx => round(fx.reduce((s, [id, ...v]) => s + tpl(id).cost * v[0], 0));
   const signature = fx => JSON.stringify(fx.map(([id, ...v]) => [id, ...v]).sort());
+
+  /**
+   * Multiplica el valor de cada efecto por k (dado por la forma de evolución × commonMul/uniqueMul
+   * del Rank), redondea y lo deja en [min, max × 1,6] de su plantilla. Devuelve una lista nueva.
+   */
+  function scale(fx, k) {
+    return fx.map(([id, v]) => {
+      const t = tpl(id);
+      return [id, Math.min(Math.floor(t.max * 1.6), Math.max(t.min, Math.round(v * k)))];
+    });
+  }
 
   const SEQ = ['start', 'hit', 'hurt', 'contact', 'tick', 'kill'];
   const MUL = ['out', 'inMul', 'speed'];
 
   /** { n, fx } + Pokémon → efecto con descripción `d` y los ganchos de G.AbilityFX. */
   function build(p, mon) {
-    const parts = p.fx.map(([id, ...v]) => ({ t: TEMPLATES[id], v }));
+    const parts = p.fx.map(([id, ...v]) => ({ t: tpl(id), v }));
     const res = { d: parts.map(({ t, v }) => t.text(v[0], mon)).join(' '), name: p.n, passive: true };
     for (const { t, v } of parts) {
       const h = t.hooks(v[0], mon);
@@ -109,6 +123,8 @@ G.PassiveFX = (() => {
         res[key] = prev ? (...a) => prev(...a) * h[key](...a) : h[key];
       }
       if (h.dodge) { const prev = res.dodge; res.dodge = prev ? (...a) => prev(...a) + h.dodge(...a) : h.dodge; }
+      // revive(pl) → true si cancela la muerte (player.js); basta con que uno lo haga.
+      if (h.revive) { const prev = res.revive; res.revive = prev ? (...a) => prev(...a) || h.revive(...a) : h.revive; }
       if (h.cdMul) res.cdMul = (res.cdMul || 1) * h.cdMul;
       if (h.healMul) res.healMul = (res.healMul || 1) * h.healMul;
       if (h.critMul) res.critMul = Math.max(res.critMul || 0, h.critMul);
@@ -116,5 +132,5 @@ G.PassiveFX = (() => {
     return res;
   }
 
-  return { TEMPLATES, BANDS, power, signature, build };
+  return { TEMPLATES, BANDS, power, signature, scale, build };
 })();

@@ -20,6 +20,7 @@
  *   healMul               × a lo que le curan
  *   statusCd              × a la recarga de los potenciadores · cdMul × a todas
  *   critMul               daño del crítico (normal ×1,5)
+ *   revive(pl)            iba a caer: true cancela la muerte (pasivas unique, player.js)
  *   summon: 'clima'       pone su clima al empezar y cada 3 min (si no hay otro)
  *   levitate / steady / sturdy / sheer / serene / lavaProof / damp / touchPoison  (marcas)
  * Las descripciones van en español; las traducciones, en lang-en.js y lang-updates.js

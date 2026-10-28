@@ -192,3 +192,175 @@ test('critDmg text states the real multiplier', () => {
   const { PassiveFX: P } = world('js/data/passive-fx.js');
   assert.match(P.build({ n: 'X', fx: [['critDmg', 30]] }, MONS[0]).d, /x1\.8/);
 });
+
+// ---------------- common por tipo, scale y catálogo unique (tarea 6) ----------------
+const TYPES18 = ['normal', 'fire', 'water', 'grass', 'electric', 'ice', 'fighting', 'poison', 'ground',
+  'flying', 'psychic', 'bug', 'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy'];
+const uworld = () => world('js/data/passive-fx.js', 'js/data/passive-unique-fx.js', 'js/data/passives-common.js');
+const BAD_TEXT = /[áéíóúñ¿¡]|NaN|undefined/;
+
+test('PASSIVES_COMMON has a themed passive for each of the 18 types', () => {
+  const G = uworld(), names = new Set();
+  assert.deepEqual(Object.keys(G.PASSIVES_COMMON).sort(), [...TYPES18].sort());
+  for (const t of TYPES18) {
+    const p = G.PASSIVES_COMMON[t];
+    assert.ok(typeof p.n === 'string' && /^[A-Z][a-z]+ [A-Z][a-z]+$/.test(p.n), t + ': ' + p.n);
+    assert.ok(!names.has(p.n.toLowerCase()), 'duplicate name ' + p.n);
+    names.add(p.n.toLowerCase());
+    assert.ok(p.fx.length >= 2 && p.fx.length <= 3, t);
+    for (const [id, v] of p.fx) {
+      const tp = G.PassiveFX.TEMPLATES[id];
+      assert.ok(tp, `${t}: ${id}`);
+      assert.ok(!tp.cond, `${t}: ${id} is conditional`);
+      assert.ok(Number.isInteger(v) && v >= tp.min && v <= tp.max, `${t}: ${id}=${v}`);
+    }
+    const d = G.PassiveFX.build(G.PASSIVES_COMMON[t], { types: [t] }).d;
+    assert.ok(d.length > 5 && !BAD_TEXT.test(d), t + ': ' + d);
+  }
+});
+
+test('scale multiplies, rounds, clamps to max x1.6 and never mutates its input', () => {
+  const G = uworld(), P = G.PassiveFX;
+  for (const t of TYPES18) {
+    const fx = G.PASSIVES_COMMON[t].fx, copy = JSON.stringify(fx);
+    assert.deepEqual(P.scale(fx, 1), fx);
+    assert.notEqual(P.scale(fx, 1), fx);
+    for (const k of [1.3, 1.6, 1.6 * 1.5]) {
+      const out = P.scale(fx, k);
+      out.forEach(([id, v], i) => {
+        const tp = P.TEMPLATES[id];
+        assert.equal(id, fx[i][0]);
+        assert.ok(Number.isInteger(v), `${id}=${v}`);
+        assert.ok(v >= tp.min && v <= tp.max * 1.6 + 1e-9, `${t}: ${id}=${v} over ${tp.max * 1.6}`);
+        assert.equal(v, Math.min(Math.floor(tp.max * 1.6), Math.max(tp.min, Math.round(fx[i][1] * k))));
+      });
+    }
+    assert.equal(JSON.stringify(fx), copy);
+  }
+  assert.deepEqual(P.scale([['typeDmg', 15]], 1.3), [['typeDmg', 20]]);      // 19,5 → 20
+  assert.deepEqual(P.scale([['dodge', 15]], 2.4), [['dodge', 24]]);          // tope 15 × 1,6
+  assert.deepEqual(P.scale([['reviveOnce', 50]], 2), [['reviveOnce', 96]]);  // también los unique
+});
+
+test('UniqueFX has >= 30 templates in three tiers of 12/10/8, consistent both ways', () => {
+  const { UniqueFX: U } = uworld();
+  const ids = Object.keys(U.TEMPLATES);
+  assert.ok(ids.length >= 30);
+  assert.deepEqual(U.TIERS.basic, ['deathBurst', 'lifeSteal', 'thornAura', 'speedOnKill', 'startShield', 'coinBonus',
+    'xpBurst', 'slowAura', 'critStreak', 'burnTouch', 'rangedBonus', 'comebackHeal']);
+  assert.deepEqual(U.TIERS.adv, ['reviveOnce', 'killNova', 'hurtNova', 'orbitGuard', 'chainSpark', 'dashOnHurt',
+    'executeLow', 'comboCharge', 'killHealPulse', 'barrier']);
+  assert.deepEqual(U.TIERS.supreme, ['moveStorm', 'slowDomain', 'timeWarp', 'mirrorHit', 'lastStand', 'apexAura',
+    'spectralClone', 'rageEngine']);
+  const listed = [...U.TIERS.basic, ...U.TIERS.adv, ...U.TIERS.supreme];
+  for (const id of listed) assert.equal(U.TEMPLATES[id].tier, Object.keys(U.TIERS).find(t => U.TIERS[t].includes(id)), id);
+  assert.deepEqual([...ids].sort(), [...listed].sort());
+  for (const [id, t] of Object.entries(U.TEMPLATES)) {
+    assert.ok(t.cost > 0 && t.min > 0 && t.max >= t.min, id);
+    assert.equal(typeof t.text, 'function', id); assert.equal(typeof t.hooks, 'function', id);
+  }
+  const budget = tier => U.TIERS[tier].reduce((s, id) => s + U.TEMPLATES[id].cost * U.TEMPLATES[id].max, 0) / U.TIERS[tier].length;
+  const r = budget('supreme') / budget('basic');
+  assert.ok(r >= 1.4 && r <= 1.6, 'supreme/basic budget ' + r);
+});
+
+test('every unique template builds an English description for 1-type and 2-type mons', () => {
+  const G = uworld();
+  for (const [id, t] of Object.entries(G.UniqueFX.TEMPLATES)) {
+    for (const v of [t.min, Math.round((t.min + t.max) / 2), t.max, Math.floor(t.max * 1.6)]) {
+      for (const mon of MONS) {
+        const d = G.PassiveFX.build({ n: 'X', fx: [[id, v]] }, mon).d;
+        assert.ok(typeof d === 'string' && d.length > 5, id);
+        assert.ok(!BAD_TEXT.test(d), id + ': ' + d);
+      }
+    }
+  }
+});
+
+test('PassiveFX.build and power accept a unique id next to a common one', () => {
+  const G = uworld(), P = G.PassiveFX;
+  const a = P.build({ n: 'X', fx: [['typeDmg', 10], ['executeLow', 40]] }, MONS[0]);
+  assert.match(a.d, /Fire moves/); assert.match(a.d, /40%/);
+  assert.ok(Math.abs(a.out(fresh(), { type: 'fire' }, { hp: 10, maxHp: 100 }) - 1.1 * 1.4) < 1e-9);
+  assert.equal(a.out(fresh(), { type: 'water' }, { hp: 90, maxHp: 100 }), 1);
+  assert.equal(P.power([['executeLow', 40]]), G.UniqueFX.TEMPLATES.executeLow.cost * 40);
+  // sin el catálogo unique, build sigue funcionando con las plantillas comunes
+  const bare = world('js/data/passive-fx.js');
+  assert.match(bare.PassiveFX.build({ n: 'X', fx: [['typeDmg', 10]] }, MONS[0]).d, /\+10%/);
+});
+
+test('unique hooks keep their state on the player object', () => {
+  const G = uworld(), P = G.PassiveFX;
+  const foes = [];
+  G.EnemyMgr = { queryCircle: () => foes };
+  G.FX = { ring() {}, dmgText() {} };
+  const foe = () => { const e = { x: 0, y: 0, hp: 100, maxHp: 100, dead: false, slow: 0, slowT: 0, burn: 0 };
+    e.hurt = d => { e.hp -= d; }; e.applySlow = (f, t) => { e.slow = f; e.slowT = t; }; e.applyBurn = () => { e.burn++; }; return e; };
+  foes.push(foe(), foe());
+  const add = pl => Object.assign(pl, { x: 0, y: 0, bodyH: 20, heal(n) { this.hp = Math.min(this.maxHp, this.hp + n); } });
+  // combo: sube con cada golpe y se pierde al recibir uno
+  const c = P.build({ n: 'X', fx: [['comboCharge', 20]] }, MONS[0]), p1 = add(fresh()), p2 = add(fresh());
+  for (let i = 0; i < 5; i++) c.hit(p1, foes[0], {});
+  assert.ok(c.out(p1, {}) > 1); assert.equal(c.out(p2, {}), 1);
+  c.hurt(p1); assert.equal(c.out(p1, {}), 1);
+  // aura de frenado: frena a los cercanos cada medio segundo
+  const s = P.build({ n: 'X', fx: [['slowAura', 30]] }, MONS[0]), p3 = add(fresh());
+  s.tick(p3, 1);
+  assert.ok(foes.every(e => Math.abs(e.slow - 0.3) < 1e-9));
+  // nova al matar: cada 10 derrotas daña a los de alrededor
+  const n = P.build({ n: 'X', fx: [['killNova', 100]] }, MONS[0]), p4 = add(fresh());
+  for (let i = 0; i < 9; i++) n.kill(p4, foes[0]);
+  assert.equal(foes[1].hp, 100);
+  n.kill(p4, foes[0]);
+  assert.ok(foes[1].hp < 100);
+  // escudo inicial: bloquea los primeros v golpes
+  const b = P.build({ n: 'X', fx: [['startShield', 2]] }, MONS[0]), p5 = add(fresh());
+  b.start(p5);
+  assert.equal(b.dodge(p5), 1); assert.equal(b.dodge(p5), 1); assert.equal(b.dodge(p5), 0);
+});
+
+test('reviveOnce revives exactly once per player', () => {
+  const G = uworld();
+  const a = G.PassiveFX.build({ n: 'X', fx: [['reviveOnce', 40]] }, MONS[0]);
+  const pl = Object.assign(fresh(), { x: 0, y: 0, bodyH: 20 }), other = Object.assign(fresh(), { x: 0, y: 0, bodyH: 20 });
+  pl.hp = 0;
+  assert.equal(a.revive(pl), true);
+  assert.equal(pl.hp, 40);
+  assert.equal(pl.reviveUsed, true);
+  pl.hp = 0;
+  assert.equal(a.revive(pl), false);
+  assert.equal(pl.hp, 0);
+  other.hp = 0;
+  assert.equal(a.revive(other), true);                 // otro jugador (otra run) tiene la suya
+});
+
+test('Player death path asks abil.revive and cancels the death once', () => {
+  const G = { U: { TYPE_NAME: {}, TYPE_COLOR: {} }, Types: { mult: () => 1, label: () => null }, Weather: { mult: () => 1, current: null } };
+  for (const f of ['js/data/pokedex.js', 'js/data/passive-fx.js', 'js/data/passive-unique-fx.js', 'js/data/passives.js', 'js/data/ability-fx.js']) new Function('G', source(f))(G);
+  G.Sprites = { hasShiny: () => false, playerScale: () => 1, playerRadius: () => 10, bodyHeight: () => 30, Animator: class { play() {} } };
+  G.Mons = { monFor: dex => G.DEX_BY[dex] }; G.Coop = { active: false }; G.Stats = { taken: () => 1 };
+  G.Audio = { sfx() {} }; G.Camera = { kick() {} }; G.Pad = { rumble() {} };
+  G.FX = { dmgText() {}, burst() {}, ring() {} }; G.Projectiles = { clearOrbs() {} };
+  new Function('G', source('js/entities/player.js'))(G);
+  const pl = new G.Player(G.DEX_BY[4]); pl.activeGroup = () => []; pl.x = 0; pl.y = 0;
+  pl.abil = G.PassiveFX.build({ n: 'X', fx: [['reviveOnce', 50]] }, G.DEX_BY[4]);
+  pl.hurt(99999);
+  assert.equal(pl.dead, false);
+  assert.ok(Math.abs(pl.hp - pl.maxHp * 0.5) < 1e-9);
+  assert.ok(pl.invuln > 0);
+  pl.invuln = 0;
+  pl.hurt(99999);
+  assert.equal(pl.dead, true);
+  assert.equal(pl.hp, 0);
+});
+
+test('dev.html loads the common and unique catalogs before passives.js; NEED has UniqueFX and Rank', () => {
+  const html = source('dev.html'), at = f => html.indexOf(`src="js/data/${f}"`);
+  assert.ok(at('passive-fx.js') > 0);
+  for (const f of ['passives-common.js', 'passive-unique-fx.js']) {
+    assert.ok(at(f) > at('passive-fx.js') && at(f) < at('passives.js'), f);
+  }
+  const need = source('js/main.js').match(/const NEED = \[([^\]]*)\]/)[1];
+  assert.match(need, /'UniqueFX'/);
+  assert.match(need, /'Rank'/);
+});
