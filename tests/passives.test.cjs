@@ -319,6 +319,59 @@ test('unique hooks keep their state on the player object', () => {
   assert.equal(b.dodge(p5), 1); assert.equal(b.dodge(p5), 1); assert.equal(b.dodge(p5), 0);
 });
 
+test('deathBurst does not chain: burst victims never burst again, whatever the sweep order', () => {
+  const G = uworld();
+  const mk = (id, hp) => { const e = { id, x: 0, y: 0, hp, maxHp: 100, dead: false, hits: 0 };
+    e.hurt = d => { e.hits++; e.hp -= d; if (e.hp <= 0) e.dead = true; }; return e; };
+  // como EnemyMgr: la baja se procesa después, en un barrido de atrás hacia delante
+  const run = order => {
+    const list = [mk('a', 1), mk('killed', 0), mk('b', 1), mk('c', 1), mk('tough', 1000)];
+    list[1].dead = true;
+    let bursts = 0;
+    G.EnemyMgr = { queryCircle: () => { bursts++; return list; } };
+    G.FX = { ring() {} };
+    const a = G.PassiveFX.build({ n: 'X', fx: [['deathBurst', 100]] }, MONS[0]), pl = fresh();
+    const done = new Set();
+    for (let frame = 0; frame < 3; frame++) {
+      const idx = order === 'back' ? [...list.keys()].reverse() : [...list.keys()];
+      for (const i of idx) if (list[i].dead && !done.has(i)) { done.add(i); a.kill(pl, list[i]); }
+    }
+    return { list, bursts };
+  };
+  for (const order of ['back', 'front']) {
+    const { list, bursts } = run(order);
+    assert.equal(bursts, 1, order);
+    assert.ok(list.filter(e => e.id !== 'killed').every(e => e.hits === 1), order);
+    assert.ok(list.filter(e => ['a', 'b', 'c'].includes(e.id)).every(e => e.dead && e.byBurst), order);
+    assert.equal(list[4].byBurst, undefined);            // el que aguanta la explosión sí explotará al caer
+  }
+});
+
+test('critStreak boosts exactly every 6th hit, also when that hit kills, and moveless hits do not count', () => {
+  const G = uworld();
+  const a = G.PassiveFX.build({ n: 'X', fx: [['critStreak', 50]] }, MONS[0]), pl = fresh(), m = { kind: 'projectile' };
+  const seq = [];
+  for (let i = 0; i < 18; i++) {
+    seq.push(a.out(pl, m, {}));
+    if (a.hit && i % 6 !== 5) a.hit(pl, {}, m);         // los golpes que rematan no llaman a hit (afterHit)
+  }
+  assert.deepEqual(seq.map((x, i) => (x > 1 ? i : -1)).filter(i => i >= 0), [5, 11, 17]);
+  const before = pl.critStreakN;
+  assert.equal(a.out(pl, undefined, {}), 1);
+  assert.equal(pl.critStreakN, before);
+});
+
+test('rangedBonus only boosts moves that hit away from the player', () => {
+  const G = uworld();
+  const a = G.PassiveFX.build({ n: 'X', fx: [['rangedBonus', 20]] }, MONS[0]);
+  for (const kind of ['projectile', 'homing', 'bounce', 'beam', 'boomerang', 'cone', 'meteor', 'chain', 'turret']) {
+    assert.ok(Math.abs(a.out(fresh(), { kind }) - 1.2) < 1e-9, kind);
+  }
+  for (const kind of ['melee', 'dash', 'spin', 'shove', 'charge', 'aura', 'orbit', 'nova', 'trail', 'quake', 'buff']) {
+    assert.equal(a.out(fresh(), { kind }), 1, kind);
+  }
+});
+
 test('reviveOnce revives exactly once per player', () => {
   const G = uworld();
   const a = G.PassiveFX.build({ n: 'X', fx: [['reviveOnce', 40]] }, MONS[0]);

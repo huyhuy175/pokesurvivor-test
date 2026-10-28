@@ -14,7 +14,8 @@ G.UniqueFX = (() => {
   const half = v => Math.round(v / 2);
   const lvl = pl => pl.level || 1;
   const low = pl => pl.hp < pl.maxHp / 3;
-  const CLOSE = ['melee', 'dash', 'spin', 'shove', 'charge'];
+  /** Movimientos que pegan lejos de ti (las auras, órbitas, novas, estelas y terremotos no). */
+  const RANGED = ['projectile', 'homing', 'bounce', 'beam', 'boomerang', 'cone', 'meteor', 'chain', 'turret'];
   const near = (x, y, r) => (G.EnemyMgr ? G.EnemyMgr.queryCircle(x, y, r) : []).filter(e => !e.dead);
   const ring = (x, y, r, col) => { if (G.FX) G.FX.ring(x, y, 8, r, col, 0.4, 4); };
   const say = (pl, txt, col) => { if (G.FX) G.FX.dmgText(pl.x, pl.y - (pl.bodyH || 0) - 16, txt, col, true); };
@@ -43,12 +44,17 @@ G.UniqueFX = (() => {
     // ---------------- basic (cost × max = 6) ----------------
     deathBurst: { tier: 'basic', cost: 0.05, min: 30, max: 120,
       text: v => `Defeated enemies burst, hitting foes nearby (${v}% power).`,
+      // Las bajas se procesan luego, en el barrido de EnemyMgr (no dentro del golpe): quien cae
+      // por una explosión queda marcado (byBurst) y su baja no explota, así no hay cadenas.
       hooks: v => ({ kill: (pl, e) => {
-        if (pl.burstBusy || !e) return;                 // (las explosiones no encadenan más explosiones)
-        pl.burstBusy = true;
+        if (!e || e.byBurst) return;
         ring(e.x, e.y, 60, '#ff9a5c');
-        blast(e.x, e.y, 60, (10 + lvl(pl) * 3) * v / 100, '#ff9a5c');
-        pl.burstBusy = false;
+        const dmg = (10 + lvl(pl) * 3) * v / 100;
+        for (const o of near(e.x, e.y, 60)) {
+          if (o === e) continue;
+          o.hurt(dmg, '#ff9a5c', o.x - e.x, o.y - e.y, 0);
+          if (o.dead) o.byBurst = true;
+        }
       } }) },
     lifeSteal: { tier: 'basic', cost: 0.24, min: 5, max: 25,
       text: v => `${v}% chance on hit to heal 1% of max health.`,
@@ -81,14 +87,19 @@ G.UniqueFX = (() => {
       } }) },
     critStreak: { tier: 'basic', cost: 0.05, min: 30, max: 120,
       text: v => `Every 6th hit strikes like a critical: +${v}% damage.`,
-      hooks: v => ({ hit: pl => { pl.critStreakN = ((pl.critStreakN || 0) + 1) % 6; },
-        out: pl => ((pl.critStreakN || 0) === 5 ? k(v) : 1) }) },
+      // Cuenta en out (se llama una vez por golpe, también el que remata; afterHit no llega
+      // a los que matan). Sin movimiento (m) no cuenta ni gasta el bonus.
+      hooks: v => ({ out: (pl, m) => {
+        if (!m) return 1;
+        pl.critStreakN = ((pl.critStreakN || 0) + 1) % 6;
+        return pl.critStreakN === 0 ? k(v) : 1;
+      } }) },
     burnTouch: { tier: 'basic', cost: 0.2, min: 5, max: 30,
       text: v => `${v}% chance on hit to burn the target.`,
       hooks: v => ({ hit: (pl, e) => { if (e && e.applyBurn && Math.random() < v / 100) e.applyBurn(1); } }) },
     rangedBonus: { tier: 'basic', cost: 0.2, min: 6, max: 30,
-      text: v => `+${v}% damage with ranged moves.`,
-      hooks: v => ({ out: (pl, m) => (m && m.kind && !CLOSE.includes(m.kind) ? k(v) : 1) }) },
+      text: v => `+${v}% damage with ranged moves (shots, beams, cones and the like).`,
+      hooks: v => ({ out: (pl, m) => (m && RANGED.includes(m.kind) ? k(v) : 1) }) },
     comebackHeal: { tier: 'basic', cost: 0.2, min: 5, max: 30,
       text: v => `When health drops below 1/3, heals ${v}% of max health (every 30 s).`,
       hooks: v => ({ tick: (pl, dt) => down(pl, 'comebackT', dt),
