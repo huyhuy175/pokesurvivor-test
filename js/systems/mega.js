@@ -49,7 +49,7 @@ G.Mega = (() => {
 
   function grantStone(pl) {
     pl.megaStone = 1;
-    G.FX.dmgText(pl.x, pl.y - pl.bodyH - 12, G.T('Mega Stone!'), '#ff6bd6', true);
+    G.FX.dmgText(pl.x, pl.y - pl.bodyH - 12, G.T('Mega Stone! Choose it at your next level-up'), '#ff6bd6', true);
     G.FX.ring(pl.x, pl.y, 8, 90, '#ff6bd6', 0.6, 5);
     G.Audio.sfx('legend');
   }

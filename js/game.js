@@ -440,8 +440,8 @@ G.Game = (() => {
     state = 'choice';
     if (G.Coop.active) G.Coop.holdStart();
     G.Audio.sfx('levelup');
-    G.RunUI.showBond(opt, picked => {
-      const group = pl.fuse(picked, opt.group);
+    G.RunUI.showBond(opt, (picked, chosen) => {
+      const group = pl.fuse(picked, (chosen || opt).group);
       if (group) {                                  // (null: no encajaba, no se gastó el vínculo)
         G.Audio.sfx('legend');
         G.FX.ring(pl.x, pl.y, 8, 130, '#ff8ad8', 0.8, 6);

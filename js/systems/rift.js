@@ -356,7 +356,7 @@ G.Rift = (() => {
     get inArena() { return !!arena; },
     get special() { return !!(arena && arena.special); },
     /** Centro y radio jugable (px) de la arena, o null si no hay: lo usa data/apex-moves.js. */
-    arenaInfo() { return arena ? { x: arena.x, y: arena.y, r: (arena.r - 1.4) * TS() } : null; },
+    arenaInfo() { return arena ? { x: arena.x, y: arena.y, r: (arena.r - 0.9) * TS() } : null; },
     get misses() { return misses; },
     SPECIAL_AT, get SPECIAL_END() { return specialEnd(); }, APEX, apexDef,
     get timeLeft() { return arena ? Math.max(0, ARENA_TIME - arena.t) : 0; },

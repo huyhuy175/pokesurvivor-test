@@ -1127,5 +1127,10 @@ G.I18n.add({
   'No hace daño: acumula PROBABILIDAD DE CRÍTICO mientras esté activo.': 'Deals no damage: builds CRITICAL HIT CHANCE while active.',
   'No hace daño: acumula DAÑO CRÍTICO mientras esté activo.': 'Deals no damage: builds CRITICAL DAMAGE while active.',
   'No hace daño: acumula VIDA MÁXIMA mientras esté activo.': 'Deals no damage: builds MAX HEALTH while active.',
-  'No hace daño: acumula VELOCIDAD DE ATAQUE mientras esté activo.': 'Deals no damage: builds ATTACK SPEED while active.'
+  'No hace daño: acumula VELOCIDAD DE ATAQUE mientras esté activo.': 'Deals no damage: builds ATTACK SPEED while active.',
+  '¿A qué unes el vínculo?': 'What do you bond it to?',
+  'Movimiento especial': 'Signature move',
+  'Grupo de ataques': 'Attack group',
+  'Dos movimientos sueltos': 'Two loose moves',
+  'Unes dos de los movimientos sueltos.': 'Bond two of your loose moves together.'
 });

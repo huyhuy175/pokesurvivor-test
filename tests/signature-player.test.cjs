@@ -244,6 +244,26 @@ test('a full signature group falls back to the normal options', () => {
   assert.deepEqual(opt.loose.map(x => x.id).sort(), ['confusion', 'psybeam']);
 });
 
+test('with room in the signature group and in a normal group the player is offered both (opt.alt)', () => {
+  const { pl } = sigPlayer();
+  learn(pl, 'calm-mind', 'nasty-plot', 'psybeam');
+  pl.bonds = 5;
+  const m = id => pl.moves.find(x => x.id === id);
+  const opt0 = pl.bondOptions();
+  assert.equal(opt0.mode, 'sig');
+  assert.equal(opt0.alt.mode, 'pair', 'two loose attacks can still be paired');
+  pl.fuse([m('confusion'), m('psybeam')]);
+  const opt = pl.bondOptions();
+  assert.equal(opt.mode, 'sig');
+  assert.equal(opt.alt.mode, 'add');
+  assert.notEqual(opt.alt.group, opt.group);
+  assert.equal(pl.fuse([m('calm-mind')], opt.alt.group).length, 3, 'the normal group grows, the signature one is untouched');
+  assert.equal(pl.sigGroup().length, 1);
+  assert.equal(pl.bondOptions().alt.mode, 'add');
+  pl.fuse([m('nasty-plot')], pl.sigGroup());
+  assert.equal(pl.bondOptions(), null, 'nothing loose is left');
+});
+
 test('losing the signature move returns its fused buffs to normal slots', () => {
   const { G, pl } = sigPlayer();
   learn(pl, 'calm-mind', 'nasty-plot');
@@ -266,7 +286,7 @@ test('the bond screen treats the signature option like adding to a group, and a 
   assert.match(run, /const single = o => o\.mode === 'add' \|\| o\.mode === 'sig'/);
   assert.equal((run.match(/single\(/g) || []).length >= 4, true);
   const game = source('js/game.js');
-  assert.match(game, /const group = pl\.fuse\(picked, opt\.group\);\s*\n\s*if \(group\) \{/);
+  assert.match(game, /const group = pl\.fuse\(picked, \(chosen \|\| opt\)\.group\);\s*\n\s*if \(group\) \{/);
 });
 
 // ---------------- lượt sửa sau review ----------------

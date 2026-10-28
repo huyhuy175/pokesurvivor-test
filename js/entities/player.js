@@ -141,7 +141,9 @@ G.Player = class Player {
     if (!next) return;
     const ratio = this.maxHp > 0 ? this.hp / this.maxHp : 0;
     this.clearAbility();
-    const hpDiff = next.hp - this.mon.hp;
+    // La vida base de la línea ya viene multiplicada por Prestigio y Rank (game.js al empezar): la diferencia de la forma nueva también.
+    const bonusK = this.remote || !G.Prestige || !G.Rank ? 1 : (G.Prestige.bonus(this.dex).hpMul || 1) * (G.Rank.bonus(this.dex).hpMul || 1);
+    const hpDiff = Math.round((next.hp - this.mon.hp) * bonusK);
     this.setLook(next);
     this.baseSpd = next.spd;
     this.baseAtk = next.atk;
@@ -384,16 +386,22 @@ G.Player = class Player {
 
   /**
    * Lo que se puede hacer ahora con un vínculo: sumar un potenciador al movimiento especial (mientras le quepan),
-   * añadir a un grupo o unir dos sueltos.
+   * añadir a un grupo o unir dos sueltos. Si caben las dos cosas, la primera lleva en `alt` la opción de los grupos
+   * normales y quien juega elige (antes el especial tapaba siempre a los grupos).
    */
   bondOptions() {
     const sigG = this.sigGroup(), plain = this.slots.filter(s => s !== sigG);
     const loose = plain.filter(s => s.length === 1).map(s => s[0]);
     const buffs = loose.filter(m => m.kind === 'buff');
-    if (sigG && sigG.length - 1 < Player.SIG_BUFFS && buffs.length) return { mode: 'sig', group: sigG, loose: buffs };
     const grow = plain.find(s => s.length > 1 && s.length < Player.BOND_MAX);
-    if (grow) return loose.length ? { mode: 'add', group: grow, loose } : null;
-    return loose.length >= 2 ? { mode: 'pair', group: null, loose } : null;
+    const normal = grow ? (loose.length ? { mode: 'add', group: grow, loose } : null)
+      : loose.length >= 2 ? { mode: 'pair', group: null, loose } : null;
+    if (sigG && sigG.length - 1 < Player.SIG_BUFFS && buffs.length) {
+      const o = { mode: 'sig', group: sigG, loose: buffs };
+      if (normal) o.alt = normal;
+      return o;
+    }
+    return normal;
   }
 
   /** Junta `moves` (sueltos) en el grupo `group` (o en uno nuevo) y gasta un vínculo. */

@@ -194,7 +194,7 @@ G.RunUI = (() => {
    * @param cb   recibe la lista de movimientos que se juntan
    */
   function showBond(opt, cb) {
-    bond = { opt, cb, first: null, list: [] };
+    bond = { opt, cb, first: null, list: [], fork: opt.alt ? [opt, opt.alt] : null, options: [opt, opt.alt], forked: false };
     $('bond-back').onclick = bondBack;
     renderBond();
     G.UI.show('scr-bond');
@@ -204,11 +204,12 @@ G.RunUI = (() => {
   function renderBond() {
     const { opt, first } = bond;
     const names = ms => ms.map(m => G.T(m.name, 'move')).join(' + ');
+    if (bond.fork) return renderFork(names);
     const single = o => o.mode === 'add' || o.mode === 'sig';       // 'sig': un potenciador para el movimiento especial
     const step2 = opt.mode === 'pair' && first;
     $('bond-sub').textContent = single(opt) ? 'Elige qué movimiento se une a ' + names(opt.group)
       : step2 ? '¿Con cuál unes ' + G.T(first.name, 'move') + '?' : 'Elige el primer movimiento que vas a unir';
-    $('bond-back').classList.toggle('hidden', !step2);
+    $('bond-back').classList.toggle('hidden', !step2 && !bond.forked);
     bond.list = step2 ? opt.loose.filter(m => m !== first) : opt.loose;
     const box = $('bond-cards');
     box.innerHTML = '';
@@ -229,8 +230,39 @@ G.RunUI = (() => {
     });
   }
 
+  /** Caben el movimiento especial y un grupo normal: se elige primero a cuál se une el vínculo. */
+  function renderFork(names) {
+    $('bond-sub').textContent = '¿A qué unes el vínculo?';
+    $('bond-back').classList.add('hidden');
+    const box = $('bond-cards');
+    box.innerHTML = '';
+    bond.list = bond.fork;
+    bond.fork.forEach((o, i) => {
+      const sig = o.mode === 'sig', lead = o.group && o.group[0];
+      const col = lead ? G.U.TYPE_COLOR[lead.type] : '#ff8ad8';
+      const el = document.createElement('div');
+      el.className = 'card bond';
+      el.innerHTML =
+        `<div class="ico" style="background:${col}33">${lead ? G.Icons.html('move:' + lead.id, 32) : ''}</div>
+         <div class="txt"><div class="nm">${sig ? 'Movimiento especial' : o.group ? 'Grupo de ataques' : 'Dos movimientos sueltos'}</div>
+         <div class="ds">${o.group ? names(o.group) : 'Unes dos de los movimientos sueltos.'}</div></div>
+         <div class="key">${i + 1}</div>`;
+      el.dataset.sfx = 'none';
+      el.onclick = () => pickBond(i);
+      box.appendChild(el);
+    });
+  }
+
   function pickBond(i) {
     if (!bond || !bond.list[i] || guarded()) return;
+    if (bond.fork) {
+      bond.opt = bond.list[i];
+      bond.fork = null;
+      bond.forked = true;
+      G.Audio.sfx('select');
+      renderBond();
+      return;
+    }
     const single = o => o.mode === 'add' || o.mode === 'sig';
     const m = bond.list[i];
     if (bond.opt.mode === 'pair' && !bond.first) {
@@ -240,15 +272,17 @@ G.RunUI = (() => {
       return;
     }
     const picked = single(bond.opt) ? [m] : [bond.first, m];
+    const chosen = bond.opt;
     const cb = bond.cb;
     bond = null;
     G.UI.hide('scr-bond');
-    cb(picked);
+    cb(picked, chosen);
   }
 
   function bondBack() {
     if (!bond) return;
-    bond.first = null;
+    if (bond.first) bond.first = null;
+    else if (bond.forked) { bond.fork = bond.options; bond.forked = false; bond.opt = bond.options[0]; }
     renderBond();
   }
 

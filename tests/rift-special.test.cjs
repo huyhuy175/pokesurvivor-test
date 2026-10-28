@@ -306,5 +306,5 @@ test('arenaInfo is null outside the arena and gives the centre and the playable 
   assert.equal(a.x, w.R.arena.x);
   assert.equal(a.y, w.R.arena.y);
   const ts = w.G.Tiles.T * w.G.Sprites.PX;                 // 16 × 3 en este mundo de pruebas
-  assert.equal(a.r, (w.R.arena.r - 1.4) * ts);
+  assert.equal(a.r, (w.R.arena.r - 0.9) * ts);
 });

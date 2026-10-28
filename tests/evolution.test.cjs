@@ -117,6 +117,17 @@ test('evolve keeps level, xp, moves and the hp ratio', () => {
   assert.equal(pl.level, 15); assert.equal(pl.xp, 77); assert.equal(pl.moves.length, 3);
   near(pl.hp / pl.maxHp, 0.5, 'hp ratio');
 });
+test('evolve scales the hp difference by the Prestige and Rank bonus of the line', () => {
+  const G = playerWorld();
+  G.Prestige = { bonus: () => ({ hpMul: 1.2 }) }; G.Rank = { bonus: () => ({ hpMul: 1.5 }) };
+  const pl = new G.Player(G.DEX_BY[4]); pl.setAbility();
+  const before = pl.maxHp;
+  pl.evolve(5);
+  assert.equal(pl.maxHp, before + Math.round((G.DEX_BY[5].hp - G.DEX_BY[4].hp) * 1.8));
+  const rem = new G.Player(G.DEX_BY[4]); rem.remote = true; rem.setAbility();
+  const b2 = rem.maxHp; rem.evolve(5);
+  assert.equal(rem.maxHp, b2 + G.DEX_BY[5].hp - G.DEX_BY[4].hp, 'a remote player is not scaled');
+});
 test('two evolutions leave the passive fields like a fresh Charizard', () => {
   const G = playerWorld();
   const pl = new G.Player(G.DEX_BY[4]); pl.setAbility();
