@@ -449,6 +449,8 @@ G.DB = (() => {
     // Copias repetidas (Rank): el mayor de los dos por Pokémon.
     r.dupes = r.dupes || {};
     for (const d in older.dupes || {}) r.dupes[d] = Math.max(+r.dupes[d] || 0, +older.dupes[d] || 0);
+    // Vale de tipo en curso: el de la versión más reciente; si ésta no tiene, el de la otra.
+    if (!r.pendingType && older.pendingType) r.pendingType = older.pendingType;
     // Movimiento inicial: el de la versión más reciente; si no lo tenía elegido, el de la otra.
     for (const k of ['pstart', 'pstart2']) {
       r[k] = r[k] || {};

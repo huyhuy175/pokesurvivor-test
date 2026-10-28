@@ -190,6 +190,72 @@ test('claim any on an owned mon does not spend the item', () => {
   assert.equal(s.bag.wishany, 1);
 });
 
+/** Math.random fijo a 0 durante fn: 1ª rareza, 1er candidato, sin shiny. */
+function withZeroRandom(fn) {
+  const orig = Math.random; Math.random = () => 0;
+  try { return fn(); } finally { Math.random = orig; }
+}
+function gen1Setup(missingFilter) {
+  const G = gachaWorld(), s = withSave(G, { bag: { wishsure: 1 }, tickets: { t1: 10, t10: 0 } });
+  for (const p of G.DEX) if (p.gen === 1 && G.Mons.isBase(p.dex) && !missingFilter(p, G)) s.owned[p.dex] = { at: 1 };
+  return { G, s };
+}
+
+test('wishsure keeps the x10 4-star guarantee when the first 9 had none', () => {
+  const { G, s } = gen1Setup(p => p.rarity === 1 || p.rarity >= 4);
+  assert.ok(G.Gacha.missing(s).some(d => G.DEX_BY[d].rarity >= 4 && G.DEX_BY[d].gen === 1));
+  const out = withZeroRandom(() => G.Gacha.pull(s, 10, 1, 't1', { sure: true }));
+  assert.ok(out.slice(0, 9).every(r => r.rarity < 4));
+  assert.ok(out[9].rarity >= 4);
+  assert.equal(out[9].isNew, true);
+  assert.equal(s.bag.wishsure, undefined);
+});
+
+test('wishsure falls back to any missing mon when no 4-star is missing', () => {
+  const { G, s } = gen1Setup(p => p.rarity <= 2);
+  const out = withZeroRandom(() => G.Gacha.pull(s, 10, 1, 't1', { sure: true }));
+  assert.equal(out[9].isNew, true);
+  assert.ok(out[9].rarity <= 2);
+  assert.equal(s.bag.wishsure, undefined);
+});
+
+test('wishsure is not spent when the first 9 pulls complete the banner', () => {
+  const G = gachaWorld(), s = withSave(G, { bag: { wishsure: 1 }, tickets: { t1: 10, t10: 0 } });
+  const only = G.Gacha.pool(1, 1)[0].dex;
+  ownAllBut(G, s, 1, only);
+  const out = withZeroRandom(() => G.Gacha.pull(s, 10, 1, 't1', { sure: true }));
+  assert.equal(out.length, 10);
+  assert.equal(out[0].dex, only);
+  assert.equal(s.bag.wishsure, 1);
+  assert.equal(s.tickets.t1, 0);
+});
+
+test('startTypePick discards a stale pendingType and draws again', () => {
+  const G = gachaWorld(), s = withSave(G, { bag: { wishtype: 1 } });
+  ownAll(G, s);
+  const left = G.Gacha.missing(newSave(), 'fire')[0];
+  delete s.owned[left];
+  s.pendingType = 'dragon';          // ya no queda ningún dragón por conseguir
+  assert.equal(G.Gacha.missing(s, 'dragon').length, 0);
+  const r = G.Gacha.startTypePick(s);
+  assert.equal(r.ok, true);
+  assert.ok(G.DEX_BY[left].types.includes(r.type));
+  assert.equal(s.bag.wishtype, undefined);
+  // sin vale: se descarta igualmente y avisa
+  const t = withSave(G, {}); ownAll(G, t); t.pendingType = 'dragon';
+  assert.deepEqual(G.Gacha.startTypePick(t), { ok: false, reason: 'item' });
+  assert.equal(t.pendingType, undefined);
+});
+
+test('claim returns invalid for unknown dex, non-base dex and unknown kind', () => {
+  const G = gachaWorld(), s = withSave(G, { bag: { wishany: 1 } });
+  const evo = G.DEX.find(p => !G.Mons.isBase(p.dex)).dex;
+  assert.deepEqual(G.Gacha.claim(s, 'any', 99999), { ok: false, reason: 'invalid' });
+  assert.deepEqual(G.Gacha.claim(s, 'any', evo), { ok: false, reason: 'invalid' });
+  assert.deepEqual(G.Gacha.claim(s, 'bogus', G.Gacha.missing(s)[0]), { ok: false, reason: 'invalid' });
+  assert.equal(s.bag.wishany, 1);
+});
+
 function dbWorld() {
   global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
   const G = world([...DATA, ...MATS]);
@@ -214,6 +280,18 @@ test('sanitize keeps wish ids in the bag and valid pendingType, drops invalid', 
   }
   const c = baseSave({}); G.DB.sanitize(c);
   assert.ok(!('pendingType' in c));
+});
+
+test('merge keeps pendingType from the newer side, falling back to the older', () => {
+  const G = dbWorld();
+  let r = G.DB.merge(baseSave({ updated: 2, pendingType: 'fire' }), baseSave({ updated: 1, pendingType: 'water' }));
+  assert.equal(r.pendingType, 'fire');
+  r = G.DB.merge(baseSave({ updated: 2 }), baseSave({ updated: 1, pendingType: 'water' }));
+  assert.equal(r.pendingType, 'water');
+  r = G.DB.merge(baseSave({ updated: 1, pendingType: 'ice' }), baseSave({ updated: 2 }));
+  assert.equal(r.pendingType, 'ice');
+  r = G.DB.merge(baseSave({ updated: 2 }), baseSave({ updated: 1 }));
+  assert.ok(!('pendingType' in r));
 });
 
 test('wish ids follow the ledger rule for bag keys', () => {

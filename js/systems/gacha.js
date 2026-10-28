@@ -114,7 +114,6 @@ G.Gacha = (() => {
     if (!cost) return null;
     save.tickets.t1 -= cost.t1;
     save.tickets.t10 -= cost.t10;
-    if (sure) G.Shop.take('wishsure');
     save.pity = save.pity || {};
     save.shiny = save.shiny || {};
     save.pity[gen] = save.pity[gen] || 0;
@@ -129,14 +128,18 @@ G.Gacha = (() => {
       else want = rollRarity();
 
       let { rarity, list } = poolNear(want, gen);
-      // Vale de garantía: la última tirada es un Pokémon que aún no tienes (si hay pity, uno 5★ si falta alguno)
+      // Vale de garantía: la última tirada es un Pokémon que aún no tienes. Respeta el pity (5★) y la
+      // garantía del ×10 (≥4★ si no ha salido ninguno); si no queda de esa rareza, cualquiera que falte.
+      // El vale sólo se gasta si esto se aplica de verdad (si las 9 primeras completaron el banner, no).
       if (sure && i === n - 1) {
         const miss = missingIn(save, gen);
         if (miss.length) {
-          const top = want === 5 ? miss.filter(p => p.rarity === 5) : [];
-          list = top.length ? top : miss;
+          const noTop = !out.some(r => r.rarity >= 4);
+          const tier = miss.filter(p => want === 5 ? p.rarity === 5 : noTop ? p.rarity >= want : p.rarity === want);
+          list = tier.length ? tier : miss;
           rarity = G.U.pick(list).rarity;
           list = list.filter(p => p.rarity === rarity);
+          G.Shop.take('wishsure');
         }
       }
       if (rarity === 5) save.pity[gen] = 0;
@@ -179,9 +182,16 @@ G.Gacha = (() => {
     return G.DEX.filter(p => G.Mons.isBase(p.dex) && !save.owned[p.dex] && (!type || p.types.includes(type))).map(p => p.dex);
   }
 
-  /** Vale de tipo: gasta 1 y sortea un tipo con algún Pokémon por conseguir (queda en save.pendingType). */
+  /**
+   * Vale de tipo: gasta 1 y sortea un tipo con algún Pokémon por conseguir (queda en save.pendingType).
+   * Quien llame debe hacer G.DB.commit(true) enseguida, o el sorteo (y el vale gastado) se pierde al recargar.
+   */
   function startTypePick(save) {
-    if (save.pendingType) return { ok: true, type: save.pendingType };
+    if (save.pendingType) {
+      if (missing(save, save.pendingType).length) return { ok: true, type: save.pendingType };
+      // Ya tienes todos los de ese tipo: el sorteo no sirve. Se descarta (el vale gastado se pierde).
+      delete save.pendingType;
+    }
     if (!G.Shop.count('wishtype')) return { ok: false, reason: 'item' };
     const types = Object.keys(G.U.TYPE_NAME).filter(t => missing(save, t).length);
     if (!types.length) return { ok: false, reason: 'none' };
@@ -193,7 +203,7 @@ G.Gacha = (() => {
   /** Reclama el Pokémon de un vale ('type': el de pendingType; 'any': gasta 1 wishany). No toca el pity. */
   function claim(save, kind, dex) {
     const mon = G.DEX_BY[dex];
-    if (!mon || !G.Mons.isBase(dex)) return { ok: false, reason: 'owned' };
+    if (!mon || !G.Mons.isBase(dex) || (kind !== 'type' && kind !== 'any')) return { ok: false, reason: 'invalid' };
     if (kind === 'type') {
       if (!save.pendingType || !mon.types.includes(save.pendingType)) return { ok: false, reason: 'type' };
       if (save.owned[dex]) return { ok: false, reason: 'owned' };
