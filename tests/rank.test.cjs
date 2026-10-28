@@ -1,0 +1,126 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const source = file => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
+
+const TYPES = ['normal', 'fire', 'water', 'grass', 'electric', 'ice', 'fighting', 'poison', 'ground', 'flying',
+  'psychic', 'bug', 'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy'];
+const U = () => ({
+  TYPE_NAME: Object.fromEntries(TYPES.map(t => [t, t])),
+  TYPE_COLOR: Object.fromEntries(TYPES.map(t => [t, '#123456']))
+});
+
+function world(files, extra = {}) {
+  const G = Object.assign({ U: U(), Types: { mult: () => 1 }, Weather: { current: null } }, extra);
+  for (const f of files) new Function('G', source(f))(G);
+  return G;
+}
+const DATA = ['js/data/pokedex.js', 'js/data/passives.js', 'js/data/evolutions.js', 'js/data/mega.js'];
+const MATS = ['js/data/mega-mats.js', 'js/data/shop.js'];
+
+function rankWorld() {
+  const G = world([...DATA, 'js/systems/mons.js', 'js/systems/rank.js']);
+  G.DB = { save: { dupes: {} }, commit() {} };
+  return G;
+}
+function dbWorld() {
+  global.localStorage = { getItem() { return null; }, setItem() {}, removeItem() {} };
+  const G = world([...DATA, ...MATS]);
+  new Function('G', source('js/core/db.js'))(G);
+  return G;
+}
+const baseSave = extra => Object.assign({
+  v: 3, name: 'x', created: 1, updated: 1, coins: 0, tickets: { t1: 0, t10: 0 }, shards: 0,
+  owned: {}, shiny: {}, bag: {}, tms: {}, upgrades: {}, pupg: {}, stats: {}, missions: {},
+  led: { base: { c: [0, 0], t1: [0, 0], t10: [0, 0], sh: [0, 0] } }
+}, extra);
+
+test('starsFor follows the thresholds', () => {
+  const R = rankWorld().Rank;
+  assert.deepEqual([0, 1, 5, 6, 7, 15, 16].map(R.starsFor), [0, 1, 5, 5, 6, 10, 10]);
+  assert.equal(R.starsFor(8), 6); assert.equal(R.starsFor(9), 7);
+});
+
+test('root maps Mega and evolutions to the base form', () => {
+  const G = rankWorld(), R = G.Rank;
+  const mega = G.MEGA_DEX[0], baseOfMega = G.MEGA_FROM[mega.dex];
+  assert.equal(R.root(mega.dex), G.Mons.lineage(mega.dex)[0]);
+  assert.equal(R.root(baseOfMega), G.Mons.lineage(baseOfMega)[0] || baseOfMega);
+  assert.equal(R.root(6), 4);
+  assert.equal(R.root(4), 4);
+  assert.equal(R.root(99999), null);
+});
+
+test('add accumulates, reports new stars and caps at 15', () => {
+  const R = rankWorld().Rank;
+  const stars = [];
+  for (let i = 1; i <= 15; i++) { const r = R.add(6); assert.equal(r.over, false); stars.push(r.star); }
+  assert.deepEqual(stars, [1, 2, 3, 4, 5, 0, 6, 0, 7, 0, 8, 0, 9, 0, 10]);
+  assert.equal(R.dupesOf(4), 15);
+  assert.equal(R.starsOf(6), 10);
+  const r = R.add(6);
+  assert.deepEqual({ star: r.star, over: r.over }, { star: 0, over: true });
+  assert.equal(R.dupesOf(4), 15);
+});
+
+test('add on unknown dex does nothing harmful', () => {
+  const R = rankWorld().Rank;
+  assert.equal(R.add(99999).over, false);
+  assert.equal(R.dupesOf(99999), 0);
+});
+
+test('bonus matches the table', () => {
+  const G = rankWorld(), R = G.Rank;
+  const at = n => { G.DB.save.dupes = { 4: n }; return R.bonus(4); };
+  let b = at(0);
+  assert.deepEqual(b, { dmgMul: 1, hpMul: 1, commonMul: 1, uniqueMul: 1, uniqueOn: false });
+  b = at(3);  // 3 stars
+  assert.ok(Math.abs(b.hpMul - 1.04) < 1e-9); assert.equal(b.uniqueOn, true); assert.equal(b.commonMul, 1); assert.equal(b.uniqueMul, 1);
+  b = at(7);  // 6 stars
+  assert.equal(b.commonMul, 1.2); assert.equal(b.uniqueMul, 1);
+  assert.ok(Math.abs(b.dmgMul - 1.09) < 1e-9);
+  b = at(11); // 8 stars
+  assert.equal(b.commonMul, 1.2); assert.equal(b.uniqueMul, 1.25);
+  b = at(15); // 10 stars
+  assert.equal(b.commonMul, 1.5); assert.equal(b.uniqueMul, 1.5);
+  assert.ok(Math.abs(b.hpMul - 1.15) < 0.001); assert.ok(Math.abs(b.dmgMul - 1.15) < 0.001);
+});
+
+test('apply leaves perks alone at 0 stars and scales at higher ones', () => {
+  const G = rankWorld(), R = G.Rank;
+  const mon = { dex: 4, hp: 100 };
+  assert.deepEqual(R.apply({ atkMul: 1, hp: 0 }, mon), { atkMul: 1, hp: 0 });
+  G.DB.save.dupes = { 4: 15 };
+  const p = R.apply({ atkMul: 2, hp: 10 }, mon);
+  assert.ok(Math.abs(p.atkMul - 2.3) < 0.002);
+  assert.equal(p.hp, Math.round(110 * 1.15 - 100));
+});
+
+test('old save without dupes counts as 0 stars', () => {
+  const G = rankWorld();
+  G.DB.save = {};
+  assert.equal(G.Rank.starsOf(4), 0);
+  assert.equal(G.Rank.bonus(4).hpMul, 1);
+});
+
+test('sanitize drops unknown dex and clamps dupes', () => {
+  const G = dbWorld();
+  const s = baseSave({ dupes: { 4: 99, 6: -3, 7: 'x', 99999: 5, 1: 2.7 } });
+  G.DB.sanitize(s);
+  assert.equal(s.dupes[4], 15);
+  assert.equal(s.dupes[6], undefined);
+  assert.equal(s.dupes[7], undefined);
+  assert.equal(s.dupes[99999], undefined);
+  assert.equal(s.dupes[1], 2);
+  const t = baseSave({}); G.DB.sanitize(t);
+  assert.deepEqual(t.dupes, {});
+});
+
+test('merge takes the max of dupes per dex', () => {
+  const G = dbWorld();
+  const a = baseSave({ updated: 2, dupes: { 4: 3, 6: 9 } });
+  const b = baseSave({ updated: 1, dupes: { 4: 7, 1: 2 } });
+  const r = G.DB.merge(a, b);
+  assert.deepEqual(r.dupes, { 4: 7, 6: 9, 1: 2 });
+});

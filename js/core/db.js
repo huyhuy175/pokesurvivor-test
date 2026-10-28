@@ -95,7 +95,8 @@ G.DB = (() => {
       shards: 0,              // Fragmentos Evolutivos (Forja Evolutiva); en la libreta, clave 'sh'
       gems: 0,                // Gemas (Prestigio de los Pokémon); en la libreta, clave 'g'
       plv: {},                // dex base -> { xp, star }: nivel permanente y estrellas de Prestigio (systems/prestige.js)
-      cry: {},                // Cristales Mega: tipo -> cuántos; en la libreta, clave 'x:<tipo>'
+      dupes: {},              // dex base -> copias repetidas del gacha (0-15): estrellas Rank (systems/rank.js)
+      cry: {},              // Cristales Mega: tipo -> cuántos; en la libreta, clave 'x:<tipo>'
       pity: {},               // generación del banner -> tiradas sin ★5
       legends: {},            // dex -> fecha: legendarios vencidos en grietas
       arenas: {},             // tipo -> fecha: arenas de grieta ganadas
@@ -227,6 +228,12 @@ G.DB = (() => {
     for (const coll of ['dfav', 'pused']) {
       if (!isObj(s[coll])) { s[coll] = {}; continue; }
       for (const d of Object.keys(s[coll])) if (!Number.isFinite(+s[coll][d])) delete s[coll][d];
+    }
+    if (!isObj(s.dupes)) s.dupes = {};
+    for (const d of Object.keys(s.dupes)) {
+      const v = Math.floor(+s.dupes[d]);
+      if ((G.DEX_BY && !G.DEX_BY[d]) || !Number.isFinite(v) || v < 1) delete s.dupes[d];
+      else s.dupes[d] = Math.min(15, v);
     }
     for (const k of ['pstart', 'pstart2']) {
       if (!isObj(s[k])) s[k] = {};
@@ -437,6 +444,9 @@ G.DB = (() => {
     for (const d in older.dfav || {}) if (Math.abs(+older.dfav[d] || 0) > Math.abs(+r.dfav[d] || 0)) r.dfav[d] = older.dfav[d];
     r.pused = r.pused || {};
     for (const d in older.pused || {}) r.pused[d] = Math.max(+r.pused[d] || 0, +older.pused[d] || 0);
+    // Copias repetidas (Rank): el mayor de los dos por Pokémon.
+    r.dupes = r.dupes || {};
+    for (const d in older.dupes || {}) r.dupes[d] = Math.max(+r.dupes[d] || 0, +older.dupes[d] || 0);
     // Movimiento inicial: el de la versión más reciente; si no lo tenía elegido, el de la otra.
     for (const k of ['pstart', 'pstart2']) {
       r[k] = r[k] || {};
