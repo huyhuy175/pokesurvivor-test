@@ -19,8 +19,13 @@ G.Sprites = (() => {
    * Mega que aún no tiene hojas propias (data/mega.js; se dibuja con un aura, ver isFallback).
    */
   function sheetDex(dex) { return G.SPRITE_META[dex] ? dex : (G.MEGA_FROM && G.MEGA_FROM[dex]) || dex; }
-  /** ¿Es una Mega que usa las hojas de su forma base? */
-  function isFallback(dex) { return !G.SPRITE_META[dex] && !!(G.MEGA_FROM && G.MEGA_FROM[dex]); }
+  /** ¿Es una Mega que se dibuja con aura? Las que usan las hojas de su base y las que sólo tienen la base recoloreada
+   *  (G.MEGA_RECOLOR, data/mega-sprites.js); las de sprite propio dibujado (G.MEGA_SPRITE_META) no la necesitan. */
+  let recolor = null;
+  function isFallback(dex) {
+    if (!(G.MEGA_FROM && G.MEGA_FROM[dex])) return false;
+    return !G.SPRITE_META[dex] || (recolor || (recolor = new Set(G.MEGA_RECOLOR || []))).has(+dex);
+  }
 
   function meta(dex) { return G.SPRITE_META[sheetDex(dex)] || null; }
 
@@ -296,7 +301,7 @@ G.Sprites = (() => {
       const dx = Math.round(x - m.ax * k), dy = Math.round(y - m.ay * k);
       const prev = ctx.globalAlpha;
       if (alpha < 1) ctx.globalAlpha = prev * alpha;
-      // Mega sin hojas propias: aura rosa algo mayor detrás, con los pies en el mismo sitio.
+      // Mega sin sprite dibujado (base tal cual o recoloreada): aura rosa algo mayor detrás, con los pies en el mismo sitio.
       if (isFallback(this.dex) && !opts.flash) {
         const w2 = m.w * k * 1.1, h2 = m.h * k * 1.1;
         ctx.globalAlpha = prev * alpha * 0.45;

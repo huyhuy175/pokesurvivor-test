@@ -1,0 +1,53 @@
+10000 Mega Venusaur: ERROR The read operation timed out
+10002 Mega Charizard Y: 0/10 colores cambiados; cambio medio 0.0  -> sin paleta (cambio insuficiente)
+10003 Mega Blastoise: 6/11 colores cambiados; cambio medio 8.3
+10004 Mega Beedrill: 5/11 colores cambiados; cambio medio 9.6
+10005 Mega Pidgeot: 8/15 colores cambiados; cambio medio 23.0
+10006 Mega Raichu X: 11/14 colores cambiados; cambio medio 30.0
+10007 Mega Raichu Y: 11/14 colores cambiados; cambio medio 20.7
+10008 Mega Clefable: 1/13 colores cambiados; cambio medio 6.4  -> sin paleta (cambio insuficiente)
+10010 Mega Victreebel: 2/14 colores cambiados; cambio medio 0.9  -> sin paleta (cambio insuficiente)
+10014 Mega Starmie: 4/13 colores cambiados; cambio medio 4.3  -> sin paleta (cambio insuficiente)
+10015 Mega Pinsir: 4/11 colores cambiados; cambio medio 9.7
+10018 Mega Dragonite: 5/14 colores cambiados; cambio medio 10.3
+10019 Mega Mewtwo X: 6/11 colores cambiados; cambio medio 9.7
+10021 Mega Meganium: 2/13 colores cambiados; cambio medio 5.4  -> sin paleta (cambio insuficiente)
+10022 Mega Feraligatr: 4/11 colores cambiados; cambio medio 7.2  -> sin paleta (cambio insuficiente)
+10023 Mega Ampharos: 4/10 colores cambiados; cambio medio 15.7
+10025 Mega Scizor: 5/11 colores cambiados; cambio medio 9.1
+10026 Mega Heracross: 1/12 colores cambiados; cambio medio 1.6  -> sin paleta (cambio insuficiente)
+10031 Mega Blaziken: 2/15 colores cambiados; cambio medio 9.2
+10032 Mega Swampert: 7/13 colores cambiados; cambio medio 19.0
+10036 Mega Aggron: 2/9 colores cambiados; cambio medio 8.1
+10045 Mega Absol Z: 5/8 colores cambiados; cambio medio 42.3
+10047 Mega Salamence: 7/12 colores cambiados; cambio medio 21.8
+10048 Mega Metagross: 6/11 colores cambiados; cambio medio 14.8
+10052 Mega Staraptor: 9/13 colores cambiados; cambio medio 21.1
+10054 Mega Garchomp: 6/13 colores cambiados; cambio medio 4.9  -> sin paleta (cambio insuficiente)
+10055 Mega Garchomp Z: ERROR <urlopen error [WinError 10054] An existing connection was forcibly closed by the remote host>
+10057 Mega Lucario Z: 9/14 colores cambiados; cambio medio 10.9
+10058 Mega Abomasnow: 6/11 colores cambiados; cambio medio 15.4
+10060 Mega Froslass: 4/12 colores cambiados; cambio medio 9.5
+10061 Mega Heatran: 9/13 colores cambiados; cambio medio 34.5
+10063 Mega Emboar: 10/14 colores cambiados; cambio medio 32.4
+10065 Mega Audino: 8/14 colores cambiados; cambio medio 13.2
+10066 Mega Scolipede: 7/12 colores cambiados; cambio medio 28.9
+10069 Mega Chandelure: 8/12 colores cambiados; cambio medio 12.6
+10070 Mega Golurk: 7/13 colores cambiados; cambio medio 18.9
+10071 Mega Chesnaught: 9/14 colores cambiados; cambio medio 12.9
+10072 Mega Delphox: 9/15 colores cambiados; cambio medio 23.4
+10073 Mega Greninja: ERROR The read operation timed out
+10074 Mega Meowstic: 3/12 colores cambiados; cambio medio 24.4
+10075 Mega Meowstic: 3/12 colores cambiados; cambio medio 24.4
+10076 Mega Malamar: 10/14 colores cambiados; cambio medio 15.2
+10077 Mega Barbaracle: 13/14 colores cambiados; cambio medio 30.2
+10082 Mega Crabominable: 9/13 colores cambiados; cambio medio 23.6
+10083 Mega Golisopod: 9/15 colores cambiados; cambio medio 17.5
+10085 Mega Magearna: 11/13 colores cambiados; cambio medio 28.5
+10086 Mega Magearna: 10/13 colores cambiados; cambio medio 22.7
+10088 Mega Scovillain: 7/15 colores cambiados; cambio medio 16.0
+10089 Mega Glimmora: 3/13 colores cambiados; cambio medio 2.3  -> sin paleta (cambio insuficiente)
+10090 Mega Tatsugiri: 11/12 colores cambiados; cambio medio 20.4
+10091 Mega Tatsugiri: 11/12 colores cambiados; cambio medio 20.4
+10092 Mega Tatsugiri: 10/12 colores cambiados; cambio medio 20.9
+10093 Mega Baxcalibur: 9/12 colores cambiados; cambio medio 27.0
