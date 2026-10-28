@@ -427,11 +427,37 @@ G.VFX = (() => {
     ghost: 'shadow', dragon: 'fire', dark: 'crescent', steel: 'shard', fairy: 'star', normal: 'star'
   };
 
+  // Efecto al impactar (G.FX.hit): uno por tipo; un movimiento lo cambia con `hit` en MOVE.
+  const TYPE_HIT = {
+    fire: 'burn', water: 'splash', grass: 'leaf', electric: 'zap', psychic: 'psy', ice: 'frost',
+    fighting: 'punch', poison: 'venom', ground: 'dust', flying: 'feather', bug: 'sting', rock: 'pebble',
+    ghost: 'soul', dragon: 'roar', dark: 'shade', steel: 'clang', fairy: 'glitter', normal: 'pop'
+  };
+
+  function hitFor(m) { return (MOVE[m.id] && MOVE[m.id].hit) || TYPE_HIT[m.type] || null; }
+
+  // El resultado se comparte (se pide en cada golpe de aura/órbita): congelado y recordado por id.
+  const memo = new Map();
   function forMove(m) {
+    let r = memo.get(m.id);
+    if (r) return r;
     const v = MOVE[m.id] || {};
-    return Object.assign({ pal: m.type, proj: TYPE_SHAPE[m.type] || 'ball' }, v, { pal: v.pal || m.type });
+    r = Object.freeze(Object.assign({ pal: m.type, proj: TYPE_SHAPE[m.type] || 'ball' }, v,
+                                    { pal: v.pal || m.type, hit: hitFor(m) }));
+    memo.set(m.id, r);
+    return r;
   }
   function forType(type) { return { proj: TYPE_SHAPE[type] || 'ball', pal: PAL[type] ? type : 'normal' }; }
 
-  return { PAL, SHAPES, draw, sprite, forMove, forType, isDir, spins, frames };
+  /** Registra formas nuevas (otro archivo: vfx-shapes-*.js). Si el nombre ya existe, lo sustituye. */
+  function add(shapes) {
+    for (const [name, S] of Object.entries(shapes)) {
+      SHAPES[name] = S;
+      for (const k of [...cache.keys()]) if (k.startsWith(name + '|')) cache.delete(k);
+    }
+  }
+  /** Añade o sustituye (la entrada entera) movimientos de MOVE. */
+  function addMoves(table) { Object.assign(MOVE, table); memo.clear(); }
+
+  return { PAL, SHAPES, MOVE, TYPE_SHAPE, TYPE_HIT, add, addMoves, hitFor, draw, sprite, forMove, forType, isDir, spins, frames };
 })();

@@ -756,6 +756,7 @@ G.Combat = (() => {
     const crit = isCrit(pl), sk = statusK(pl);
     dmg *= k * (crit ? critMul(pl) : 1);
     e.hurt(dmg, col, dx, dy, sk ? knock : 0, crit ? 'crit' : G.Types.label(G.Types.mult(m.type, e.types)));
+    G.FX.hit(G.VFX.hitFor(m), G.VFX.forMove(m).pal, e.x, e.y - e.bodyH * 0.5);
     if (!ghost) pl.onDealt(dmg);
     pl.dmgDealt += dmg;
     m.dealt = (m.dealt || 0) + dmg;               // por ataque, para el resumen de la pausa
@@ -855,7 +856,7 @@ G.Combat = (() => {
 
         // Disparo fantasma de un compañero: choca y se ve, pero no daña.
         if (p.ghost) {
-          G.FX.sp('impact', p.vis ? p.vis.pal : 'normal', e.x, e.y - e.bodyH * 0.5, { life: 0.12, scale: 1 });
+          G.FX.hit(p.src ? G.VFX.hitFor(p.src) : null, p.vis ? p.vis.pal : 'normal', e.x, e.y - e.bodyH * 0.5);
           if (rebound(p, e)) break;
           if (p.pierce > 0) { p.pierce--; continue; }
           G.FX.burst(p.x, p.y - G.LIFT, p.color, 5, 80);
@@ -867,7 +868,7 @@ G.Combat = (() => {
         const k = (p.mtype ? typeK(p.mtype, e) : 1) * G.Stats.taken(e.mon, p.mcat) * (crit ? critMul(pl) : 1) * abilOut(pl, p.src, e) * statK(pl, e) * arcK(e);
         e.hurt(p.dmg * k, p.color, p.vx || (e.x - pl.x), p.vy || (e.y - pl.y), sk ? p.knock : 0,
                crit ? 'crit' : p.mtype ? G.Types.label(G.Types.mult(p.mtype, e.types)) : null);
-        if (Math.random() < 0.5) G.FX.sp('impact', p.vis ? p.vis.pal : 'normal', e.x, e.y - e.bodyH * 0.5, { life: 0.12, scale: 1 });
+        G.FX.hit(p.src ? G.VFX.hitFor(p.src) : null, p.vis ? p.vis.pal : 'normal', e.x, e.y - e.bodyH * 0.5);
         pl.dmgDealt += p.dmg * k;
         if (p.src) p.src.dealt = (p.src.dealt || 0) + p.dmg * k;
         pl.onDealt(p.dmg * k);

@@ -13,7 +13,11 @@ G.FX = (() => {
   const q = () => G.Settings.fx;
   let parts = [], sprites = [], texts = [], rings = [], slashes = [], beams = [];
 
-  function clear() { parts = []; sprites = []; texts = []; rings = []; slashes = []; beams = []; }
+  // Efectos de impacto por fotograma (G.FX.hit): un aura o una órbita golpea cientos de veces por segundo.
+  const HIT_BUDGET = [4, 8, 14];
+  let hitLeft = HIT_BUDGET[1];
+
+  function clear() { parts = []; sprites = []; texts = []; rings = []; slashes = []; beams = []; hitLeft = HIT_BUDGET[q()]; }
 
   const snap = v => Math.round(v / PX) * PX;
 
@@ -73,6 +77,68 @@ G.FX = (() => {
     }
   }
 
+  // ---------------- efecto al impactar (por tipo; ver G.VFX.TYPE_HIT) ----------------
+
+  const rnd = () => Math.random() * 6.2832;
+  /** Sprite de impacto: la animación recorre todos sus fotogramas durante su vida. */
+  function hsp(shape, pal, x, y, o = {}) {
+    const life = o.life || 0.24;
+    sp(shape, pal, x, y, Object.assign({ fade: true }, o, { life, frameRate: Math.max(8, G.VFX.frames(shape) / life) }));
+  }
+  /** n sprites que salen en abanico (con gravedad opcional). */
+  function fan(shape, pal, x, y, n, o = {}) {
+    for (let i = 0; i < n; i++) {
+      const a = o.up ? -1.57 + G.U.rand(-0.9, 0.9) : rnd(), s = G.U.rand(40, 90);
+      hsp(shape, pal, x, y, { vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: o.life || 0.3, scale: o.scale || 1,
+                              grav: o.grav || 0, spin: o.spin || 0, angle: o.point ? a : 0 });
+    }
+  }
+  /** n partículas con los colores de la paleta indicados (índices). */
+  function bits(pal, x, y, n, idx, o = {}) {
+    const P = G.VFX.PAL[pal] || G.VFX.PAL.normal;
+    n = Math.max(1, Math.round(n * DENS[q()]));
+    for (let i = 0; i < n; i++) {
+      const a = o.up ? -1.57 + G.U.rand(-0.8, 0.8) : rnd(), s = G.U.rand(30, o.power || 90);
+      px(x, y, P[idx[i % idx.length]], { vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: G.U.rand(0.2, 0.4), grav: o.grav || 0 });
+    }
+  }
+
+  const HITS = {
+    burn:  (p, x, y) => { hsp('impact', p, x, y, { life: 0.2 }); bits(p, x, y, 4, [2, 3], { up: true }); },
+    blaze: (p, x, y) => { hsp('impact', p, x, y, { life: 0.26, scale: 1.7 }); fan('fire', p, x, y, 2, { up: true, point: true }); bits(p, x, y, 5, [2, 3, 4], { up: true }); },
+    splash: (p, x, y) => { hsp('ring', p, x, y, { life: 0.22 }); fan('drop', p, x, y, 3, { up: true, grav: 260, point: true }); bits(p, x, y, 3, [3, 4], { grav: 200 }); },
+    geyser: (p, x, y) => { hsp('ring', p, x, y, { life: 0.28, scale: 1.7 }); fan('drop', p, x, y, 4, { up: true, grav: 300, point: true }); bits(p, x, y, 3, [3, 4], { up: true, grav: 200 }); },
+    bubblepop: (p, x, y) => { hsp('bubble', p, x, y, { life: 0.18 }); bits(p, x, y, 4, [4, 3]); },
+    leaf: (p, x, y) => { fan('leaf', p, x, y, 3, { grav: 90, spin: 8 }); bits(p, x, y, 2, [3]); },
+    zap: (p, x, y) => { hsp('bolt', p, x, y, { life: 0.16, angle: rnd() }); bits(p, x, y, 3, [4, 3]); },
+    shock: (p, x, y) => { hsp('star', p, x, y, { life: 0.22, scale: 1.5 }); hsp('bolt', p, x, y, { life: 0.16, angle: rnd() }); hsp('bolt', p, x, y, { life: 0.16, angle: rnd() }); bits(p, x, y, 4, [4, 3]); },
+    psy: (p, x, y) => { hsp('ring', p, x, y, { life: 0.26, scale: 1.2 }); hsp('star', p, x, y, { life: 0.2, scale: 0.8 }); bits(p, x, y, 2, [3, 4], { up: true }); },
+    frost: (p, x, y) => { hsp('star', p, x, y, { life: 0.26 }); fan('shard', p, x, y, 2, { point: true }); bits(p, x, y, 3, [3, 4]); },
+    shatter: (p, x, y) => { hsp('impact', p, x, y, { life: 0.22, scale: 1.4 }); fan('shard', p, x, y, 5, { point: true, grav: 120 }); bits(p, x, y, 3, [3, 4]); },
+    punch: (p, x, y) => { hsp('impact', p, x, y, { life: 0.2, scale: 1.7, fade: false }); },
+    venom: (p, x, y) => { fan('bubble', p, x, y, 3, { up: true, scale: 0.7, life: 0.4 }); bits(p, x, y, 3, [2, 3], { up: true, power: 50 }); },
+    dust: (p, x, y) => { fan('rock', p, x, y, 3, { up: true, grav: 280, scale: 0.5, spin: 6 }); bits(p, x, y, 4, [1, 2], { up: true, grav: 260 }); },
+    pebble: (p, x, y) => { hsp('impact', p, x, y, { life: 0.16 }); fan('rock', p, x, y, 4, { grav: 260, scale: 0.55, spin: 7 }); },
+    feather: (p, x, y) => { hsp('wind', p, x, y, { life: 0.22, spin: 10 }); fan('fly_feather', 'flying', x, y, 3, { grav: 50, spin: 8 }); },
+    sting: (p, x, y) => { hsp('star', p, x, y, { life: 0.18, scale: 0.8 }); fan('needle', p, x, y, 2, { point: true, scale: 0.8, life: 0.2 }); bits(p, x, y, 2, [3, 4]); },
+    soul: (p, x, y) => { hsp('shadow', p, x, y, { life: 0.4, vy: -40, scale: 0.8 }); bits(p, x, y, 3, [1, 2], { up: true, power: 50 }); },
+    roar: (p, x, y) => { hsp('impact', p, x, y, { life: 0.24, scale: 1.4 }); hsp('ring', p, x, y, { life: 0.26 }); bits(p, x, y, 4, [2, 3, 4]); },
+    shade: (p, x, y) => { hsp('crescent', p, x, y, { life: 0.22, angle: rnd() }); bits(p, x, y, 3, [1, 2], { up: true, power: 60 }); },
+    clang: (p, x, y) => { hsp('impact', p, x, y, { life: 0.18, scale: 1.2 }); hsp('star', p, x, y, { life: 0.2, scale: 0.7 }); bits(p, x, y, 4, [3, 4]); },
+    glitter: (p, x, y) => { fan('star', p, x, y, 3, { up: true, scale: 0.6, life: 0.4 }); bits(p, x, y, 3, [4]); },
+    pop: (p, x, y) => { hsp('impact', p, x, y, { life: 0.18, scale: 1.1 }); bits(p, x, y, 3, [3, 4]); },
+    slash: (p, x, y) => { hsp('claw', p, x, y, { life: 0.2, scale: 1.3, angle: rnd() }); }
+  };
+  const HIT_KINDS = Object.keys(HITS);
+
+  /** Golpe de un movimiento: kind = G.VFX.hitFor(m), pal = paleta del movimiento. Ignora lo desconocido. */
+  function hit(kind, pal, x, y) {
+    const f = kind && Object.prototype.hasOwnProperty.call(HITS, kind) ? HITS[kind] : null;
+    if (!f || hitLeft <= 0 || !Number.isFinite(x) || !Number.isFinite(y) || !G.Camera.sees(x, y, 20)) return;
+    hitLeft--;
+    f(pal || 'normal', x, y);
+  }
+
   function dmgText(x, y, value, color = '#ffffff', big = false) {
     // Con cientos de golpes por segundo no se leen igual: tope de 70 (los
     // grandes, como "¡Muy eficaz!" o los de jefe, siempre entran).
@@ -96,6 +162,9 @@ G.FX = (() => {
       case 'impact': sp('impact', pal, mx, my, { life: 0.2, scale: 1.5, frameRate: 12, fade: false }); break;
       case 'jaws':   sp('jaws', pal, mx, my, { life: 0.24, scale: 1.5, frameRate: 9, fade: false }); break;
       case 'claw':   sp('claw', pal, mx, my, { life: 0.2, scale: 1.5, angle: angle - Math.PI / 4 }); break;
+      default:                                                       // forma propia (vfx-shapes-*.js)
+        if (fx.melee && G.VFX.SHAPES[fx.melee]) hsp(fx.melee, pal, mx, my, { life: 0.22, scale: 1.5, angle: G.VFX.isDir(fx.melee) ? angle : 0 });
+        break;
       case 'vine':
       case 'feather':
         for (let i = 0; i < 4; i++) {
@@ -117,6 +186,7 @@ G.FX = (() => {
   // ---------------- actualización ----------------
 
   function update(dt) {
+    hitLeft = HIT_BUDGET[q()];
     for (let i = parts.length - 1; i >= 0; i--) {
       const p = parts[i];
       p.t += dt;
@@ -266,6 +336,6 @@ G.FX = (() => {
     }
   }
 
-  return { clear, px, burst, spark, sp, twinkle, trail, dmgText, ring, slash, beam, update, draw,
+  return { clear, px, burst, spark, sp, twinkle, trail, hit, HIT_KINDS, dmgText, ring, slash, beam, update, draw,
            get count() { return parts.length + sprites.length + texts.length; } };
 })();

@@ -1,0 +1,134 @@
+<!doctype html>
+<!-- Vista previa de los efectos de ataque (solo para desarrollo; build.js no la incluye).
+     Ábrela desde la raíz del repo: tools/vfx-preview.html  — carga los mismos archivos que dev.html. -->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>VFX preview</title>
+<style>
+  :root { --bg: #1b1b24; --card: #272735; --fg: #e8e8f0; }
+  body.light { --bg: #d9d9de; --card: #f1f1f4; --fg: #1b1b24; }
+  body { background: var(--bg); color: var(--fg); font: 13px/1.35 system-ui, sans-serif; margin: 0; padding: 12px 16px 60px; }
+  h1 { font-size: 18px; margin: 4px 0 10px; }
+  h2 { font-size: 15px; margin: 22px 0 6px; text-transform: capitalize; border-bottom: 1px solid #8884; }
+  .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .card { background: var(--card); border-radius: 6px; padding: 6px 8px; min-width: 120px; }
+  .card b { display: block; font-size: 12px; }
+  .card small { opacity: .7; display: block; }
+  .thumbs { display: flex; gap: 4px; align-items: center; margin-top: 4px; min-height: 30px; }
+  canvas { image-rendering: pixelated; }
+  .stage { background: #3c4a2e; border-radius: 6px; }
+  button, select { font: inherit; }
+</style>
+</head>
+<body>
+<h1>VFX por tipo — formas, movimientos y efecto al impactar</h1>
+<div class="bar">
+  <label><input type="checkbox" id="light"> fondo claro</label>
+  <label>calidad <select id="fx"><option value="0">baja</option><option value="1">media</option><option value="2" selected>alta</option></select></label>
+  <label>paleta del impacto <select id="pal"></select></label>
+  <span id="hits"></span>
+</div>
+<canvas id="stage" class="stage" width="560" height="140"></canvas>
+<div id="out"></div>
+
+<script>
+// Mínimo de G para vfx.js / fx.js (en el juego lo ponen util.js, sprites.js y settings.js).
+window.G = window.G || {};
+G.Sprites = { PX: 2 };
+G.U = {
+  hash(a, b, c) {
+    let h = (Math.imul(a | 0, 374761393) ^ Math.imul(b | 0, 668265263) ^ Math.imul(c | 0, 2147483647)) >>> 0;
+    h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+  },
+  rand: (a, b) => a + Math.random() * (b - a), lerp: (a, b, t) => a + (b - a) * t, TYPE_COLOR: {}, TYPE_NAME: {}
+};
+G.I18n = { add() {}, f: s => s };
+G.Settings = { fx: 2, get: () => true };
+G.Camera = { sees: () => true };
+G.LIFT = 12;
+</script>
+<script src="../js/data/moves.js"></script>
+<script src="../js/entities/vfx.js"></script>
+<script src="../js/entities/vfx-shapes-1.js"></script>
+<script src="../js/entities/vfx-shapes-2.js"></script>
+<script src="../js/entities/fx.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const TYPES = Object.keys(G.VFX.TYPE_HIT);
+const PREFIX = { fire: 'fire_', water: 'water_', grass: 'grass_', electric: 'elec_', ice: 'ice_', ground: 'ground_', rock: 'rock_',
+  steel: 'steel_', fighting: 'fight_', poison: 'poison_', flying: 'fly_', bug: 'bug_', ghost: 'ghost_', dragon: 'dragon_',
+  dark: 'dark_', fairy: 'fairy_', psychic: 'psy_', normal: 'norm_' };
+const live = [];                                   // { cv, shape, pal } animados
+
+function thumb(shape, pal, k = 2) {
+  const S = G.VFX.SHAPES[shape];
+  const cv = document.createElement('canvas');
+  cv.width = S.w * 2 * k; cv.height = S.h * 2 * k;
+  cv.title = shape;
+  live.push({ cv, shape, pal, k });
+  return cv;
+}
+
+function build() {
+  const out = $('out');
+  for (const t of TYPES) {
+    const h = document.createElement('h2'); h.textContent = t; out.appendChild(h);
+    const shapes = Object.keys(G.VFX.SHAPES).filter(s => s.startsWith(PREFIX[t]));
+    const r1 = document.createElement('div'); r1.className = 'row';
+    for (const s of shapes) {
+      const c = document.createElement('div'); c.className = 'card';
+      c.innerHTML = `<b>${s}</b><small>${G.VFX.frames(s)} fotogramas${G.VFX.isDir(s) ? ' · dir' : ''}${G.VFX.spins(s) ? ' · spin' : ''}</small>`;
+      const th = document.createElement('div'); th.className = 'thumbs'; th.appendChild(thumb(s, t, 3)); c.appendChild(th);
+      r1.appendChild(c);
+    }
+    out.appendChild(r1);
+    const r2 = document.createElement('div'); r2.className = 'row'; r2.style.marginTop = '8px';
+    for (const m of G.Moves.ALL.filter(m => m.type === t)) {
+      const v = G.VFX.forMove(m);
+      const c = document.createElement('div'); c.className = 'card';
+      c.innerHTML = `<b>${m.id}</b><small>${m.kind} · golpe: ${v.hit}${v.trail ? ' · estela: ' + v.trail : ''}</small>`;
+      const th = document.createElement('div'); th.className = 'thumbs';
+      for (const k of ['proj', 'beam', 'melee', 'aura', 'buff']) if (v[k] && G.VFX.SHAPES[v[k]]) th.appendChild(thumb(v[k], v.pal, 1.5));
+      c.appendChild(th); r2.appendChild(c);
+    }
+    out.appendChild(r2);
+  }
+}
+
+// Escenario del efecto al impactar.
+const stage = $('stage'), sctx = stage.getContext('2d');
+function playHit(kind) {
+  const pal = $('pal').value;
+  for (let i = 0; i < 4; i++) G.FX.hit(kind, pal, 70 + i * 120 + Math.random() * 20, 70);
+}
+function buildHits() {
+  for (const k of G.FX.HIT_KINDS) {
+    const b = document.createElement('button'); b.textContent = k; b.onclick = () => playHit(k); $('hits').appendChild(b);
+  }
+  for (const p of Object.keys(G.VFX.PAL)) $('pal').add(new Option(p, p));
+}
+
+$('light').onchange = e => document.body.classList.toggle('light', e.target.checked);
+$('fx').onchange = e => { G.Settings.fx = +e.target.value; };
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  for (const l of live) {
+    const S = G.VFX.SHAPES[l.shape], ctx = l.cv.getContext('2d');
+    ctx.clearRect(0, 0, l.cv.width, l.cv.height);
+    G.VFX.draw(ctx, l.shape, l.pal, l.cv.width / 2, l.cv.height / 2, { scale: l.k, frame: Math.floor(now / 1000 * 12) });
+  }
+  sctx.clearRect(0, 0, stage.width, stage.height);
+  G.FX.update(dt);
+  G.FX.draw(sctx);
+  requestAnimationFrame(frame);
+}
+build(); buildHits();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
