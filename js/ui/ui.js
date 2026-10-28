@@ -60,6 +60,13 @@ G.UI = (() => {
   /** Rareza: la Poké Ball que le corresponde (ver G.Icons.rarity). */
   function stars(n, size = 12) { return G.Icons.rarity(n, size > 16 ? 24 : 12); }
 
+  /** Rank (0-10): 5 estrellas doradas; de la 6 a la 10 se vuelven rojas una a una. */
+  function rankStars(n, size = 12) {
+    const red = Math.max(0, n - 5), gold = Math.min(5, n);
+    return Array.from({ length: 5 }, (_, i) =>
+      `<span style="color:${i < red ? '#ff4d4d' : i < gold ? '#ffd23f' : '#555'};font-size:${size}px">★</span>`).join('');
+  }
+
   // ---------------- sonido de la interfaz ----------------
 
   const CLICKABLE = '.btn, .menu-item, .tab, .chip, .card, .cell:not(.locked), .answer, .gen-tab';
@@ -322,6 +329,6 @@ G.UI = (() => {
     return cv;
   }
 
-  return { $, show, hide, hideAll, isOpen, chrome, refreshCoins, toast, typeChips, stars, confirmDelete,
+  return { $, show, hide, hideAll, isOpen, chrome, refreshCoins, toast, typeChips, stars, rankStars, confirmDelete,
            sprite, spriteCanvas, tick, initChrome, soundControls, hueSwap };
 })();

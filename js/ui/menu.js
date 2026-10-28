@@ -269,6 +269,7 @@ G.MenuUI = (() => {
     const useShiny = sh && p.dex === s.partner && s.partnerShiny;
     cell.appendChild(G.UI.spriteCanvas(p.dex, 92, 80, { scale: 2, silhouette: !own, shadow: own, shiny: useShiny }));
     cell.insertAdjacentHTML('beforeend', `<b>${own ? p.name : '???'}</b>${G.UI.stars(p.rarity, 9)}`);
+    if (own && G.Rank.starsOf(p.dex) > 0) cell.insertAdjacentHTML('beforeend', `<div class="rank-stars">${G.UI.rankStars(G.Rank.starsOf(p.dex), 9)}</div>`);
     cell.onclick = () => {
       dexSel = p.dex;
       $('dex-grid').querySelectorAll('.cell').forEach(c => c.classList.remove('on'));

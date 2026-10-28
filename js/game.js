@@ -107,7 +107,7 @@ G.Game = (() => {
     const save = G.DB.save;
     // Con su naturaleza aplicada (una copia: ver systems/mons.js).
     const mon = G.Mons.monFor(save.partner);
-    const perks = G.Prestige.apply(G.Upgrades.perks(G.DB.upgradesOf(mon.dex)), mon);     // más el nivel permanente y las estrellas
+    const perks = G.Rank.apply(G.Prestige.apply(G.Upgrades.perks(G.DB.upgradesOf(mon.dex)), mon), mon);     // más el nivel permanente (♦) y el Rank (★)
 
     G.UI.hideAll();
     G.UI.chrome(false);

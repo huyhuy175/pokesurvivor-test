@@ -128,13 +128,18 @@ G.GachaUI = (() => {
       c.style.setProperty('--rc', r.shiny ? '#9ae6ff' : G.Gacha.RARITY_COLOR[r.rarity]);
       c.innerHTML = `<div class="stars">${G.UI.stars(r.rarity, 24)}</div>`;
       c.appendChild(G.UI.spriteCanvas(r.dex, 132, 120, { lively: r.rarity >= 4 || r.shiny, scale: 2, shiny: r.shiny }));
+      // Repetido: sube el Rank (sin monedas); sólo al tope (refund > 0) devuelve monedas.
+      const rankUp = r.star > 0 ? ` · <span class="new">Rank up!</span>` : '';
       const tag = r.isNew
         ? `<span class="new">${r.shiny ? '¡SHINY NUEVO!' : '¡NUEVO!'}</span>`
-        : `Repetido · <span class="coin"></span> +${r.refund}`;
+        : r.refund > 0
+          ? `Duplicate · <span class="coin"></span> +${r.refund}`
+          : `Duplicate${rankUp}`;
+      const rk = r.isNew ? '' : `<div class="rank-stars">${G.UI.rankStars(G.Rank.starsOf(r.dex), 12)}</div>`;
       // Nuevo: con qué naturaleza y habilidad te ha tocado (la oculta, en dorado).
       const ab = r.isNew ? G.Mons.abilityOf(r.dex) : null;
       const who = ab ? `<div class="pmon" translate="no">${G.Mons.name(G.Mons.natureOf(r.dex).n)} · <span>${ab.name}</span></div>` : '';
-      c.insertAdjacentHTML('beforeend', `<b>${r.shiny ? G.Icons.html('shiny', 12) + ' ' : ''}${mon.name}</b>${who}<div class="tag">${tag}</div>`);
+      c.insertAdjacentHTML('beforeend', `<b>${r.shiny ? G.Icons.html('shiny', 12) + ' ' : ''}${mon.name}</b>${who}${rk}<div class="tag">${tag}</div>`);
       out.appendChild(c);
       if (skip) continue;
       if (n < 100 || r.rarity >= 4 || r.shiny) G.Audio.sfx('reveal', { rarity: r.rarity });

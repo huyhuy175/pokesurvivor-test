@@ -178,3 +178,41 @@ test('gacha: with the shiny already owned the pull falls back to a normal duplic
   assert.equal(out[0].shiny, false); assert.equal(out[0].star, 1); assert.equal(out[0].refund, 0);
   assert.equal(G.Rank.dupesOf(4), 10);
 });
+
+// ---- Task 3: Rank en la partida y en la pantalla ----
+test('game.js applies Rank right after Prestige', () => {
+  assert.match(source('js/game.js'), /G\.Rank\.apply\(\s*G\.Prestige\.apply\(/);
+});
+
+test('Prestige.apply then Rank.apply at 10 stars multiplies atkMul by about 1.15', () => {
+  const G = world([...DATA, 'js/systems/mons.js', 'js/systems/rank.js']);
+  G.DB = { save: { dupes: { 1: 15 } } };
+  const mon = G.DEX_BY[1];
+  const perks = G.Rank.apply({ atkMul: 1.2, hp: 0 }, mon);
+  assert.ok(Math.abs(perks.atkMul / 1.2 - 1.15) < 0.001);
+});
+
+test('prestige-ui uses the diamond glyph, not the star', () => {
+  const src = source('js/ui/prestige-ui.js');
+  assert.ok(!src.includes('★'));
+  assert.ok(src.includes('♦'));
+  assert.match(src, /\+1 diamond/);
+});
+
+test('UI.rankStars: 0 stars all off, 10 stars five red', () => {
+  const m = source('js/ui/ui.js').match(/function rankStars[\s\S]*?\r?\n  }\r?\n/);
+  assert.ok(m, 'rankStars missing');
+  const rankStars = new Function(m[0] + '; return rankStars;')();
+  const count = (h, c) => (h.match(new RegExp(c, 'g')) || []).length;
+  const h0 = rankStars(0);
+  assert.equal(count(h0, '#555'), 5); assert.equal(count(h0, '#ffd23f'), 0);
+  const h7 = rankStars(7);
+  assert.equal(count(h7, '#ff4d4d'), 2); assert.equal(count(h7, '#ffd23f'), 3);
+  const h10 = rankStars(10);
+  assert.equal(count(h10, '#ff4d4d'), 5); assert.equal(count(h10, '#ffd23f'), 0); assert.equal(count(h10, '#555'), 0);
+  assert.match(source('js/ui/ui.js'), /return \{[^}]*rankStars/);
+});
+
+test('gacha card does not show coins for a duplicate without refund', () => {
+  assert.match(source('js/ui/gacha-ui.js'), /r\.refund > 0/);
+});

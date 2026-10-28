@@ -10,7 +10,7 @@ G.PrestigeUI = (() => {
     const from = P.xpTo(level), to = P.xpTo(level + 1);
     const pct = atLimit ? 100 : Math.max(0, Math.min(100, Math.round((e.xp - from) / (to - from) * 100)));
     const b = P.bonus(dex), bonusPct = Math.round((b.dmgMul - 1) * 1000) / 10;
-    const stars = Array.from({ length: P.MAX_STAR }, (_, i) => `<span style="color:${i < e.star ? '#ffd23f' : '#555'}">★</span>`).join('');
+    const stars = Array.from({ length: P.MAX_STAR }, (_, i) => `<span style="color:${i < e.star ? '#ffd23f' : '#555'}">♦</span>`).join('');
     const maxed = e.star >= P.MAX_STAR, price = P.cost(dex), ready = P.canPrestige(dex) && (s.gems || 0) >= price;
 
     const el = document.createElement('div');
@@ -26,13 +26,13 @@ G.PrestigeUI = (() => {
 
     el.querySelector('[data-prestige]').onclick = () => {
       const name = G.DEX_BY[dex].name;
-      if (!window.confirm(`Prestige ${name}? It goes back to Lv 1 and gets +1 star (+10% damage and HP); its level limit goes up by ${P.LV_STEP}. Costs ${price} gems.`)) return;
+      if (!window.confirm(`Prestige ${name}? It goes back to Lv 1 and gets +1 diamond (+10% damage and HP); its level limit goes up by ${P.LV_STEP}. Costs ${price} gems.`)) return;
       const next = e.star + 1;                     // (`e` es la entrada guardada: prestige() ya la habrá cambiado)
       const r = P.prestige(dex);
       if (r.ok) {
         G.Audio.sfx('buy');
         G.UI.refreshCoins();
-        G.UI.toast(`${name} reached ${next}★!`);
+        G.UI.toast(`${name} reached ${next}♦!`);
       } else {
         G.Audio.sfx('error');
         if (r.reason === 'gems') G.UI.toast('Not enough gems');
