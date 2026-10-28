@@ -249,6 +249,8 @@ G.DB = (() => {
         if (!s[k][id] || !ok(id)) delete s[k][id];
       }
     }
+    // Vale de tipo en curso (gacha): sólo un tipo que exista.
+    if (s.pendingType !== undefined && !(typeof s.pendingType === 'string' && G.U && G.U.TYPE_NAME && Object.prototype.hasOwnProperty.call(G.U.TYPE_NAME, s.pendingType))) delete s.pendingType;
     // MT aprendidas: movimientos que existen, sin repetir.
     if (!isObj(s.ptm)) s.ptm = {};
     for (const d of Object.keys(s.ptm)) {

@@ -99,7 +99,9 @@ G.Gacha = (() => {
    * (star = estrella nueva si este repetido ha subido el Rank, si no 0)
    * (y en .iris la generación si estas tiradas te han dado su Amuleto Iris).
    */
-  function pull(save, n, gen = 1, use = 't1') {
+  function pull(save, n, gen = 1, use = 't1', opts = {}) {
+    const sure = !!opts.sure && n === 10;
+    if (sure && (!G.Shop.count('wishsure') || !missingIn(save, gen).length || !costOf(save, n, use))) return null;
     if (n === 100) {
       if (!costOf(save, 100, use)) return null;
       const hadIris = hasIris(save, gen);
@@ -112,6 +114,7 @@ G.Gacha = (() => {
     if (!cost) return null;
     save.tickets.t1 -= cost.t1;
     save.tickets.t10 -= cost.t10;
+    if (sure) G.Shop.take('wishsure');
     save.pity = save.pity || {};
     save.shiny = save.shiny || {};
     save.pity[gen] = save.pity[gen] || 0;
@@ -125,7 +128,17 @@ G.Gacha = (() => {
       else if (n === 10 && i === n - 1 && !out.some(r => r.rarity >= 4)) want = rollRarity(4);
       else want = rollRarity();
 
-      const { rarity, list } = poolNear(want, gen);
+      let { rarity, list } = poolNear(want, gen);
+      // Vale de garantía: la última tirada es un Pokémon que aún no tienes (si hay pity, uno 5★ si falta alguno)
+      if (sure && i === n - 1) {
+        const miss = missingIn(save, gen);
+        if (miss.length) {
+          const top = want === 5 ? miss.filter(p => p.rarity === 5) : [];
+          list = top.length ? top : miss;
+          rarity = G.U.pick(list).rarity;
+          list = list.filter(p => p.rarity === rarity);
+        }
+      }
       if (rarity === 5) save.pity[gen] = 0;
       let mon = G.U.pick(list);
       let shiny = G.Sprites.hasShiny(mon.dex) && (forceShiny > 0 ? (forceShiny--, true) : Math.random() < rate);
@@ -156,7 +169,51 @@ G.Gacha = (() => {
     return out;
   }
 
-  return { debugForceShiny(n = 1) { forceShiny = n; },
+  // ---------------- vales wish (ver data/shop.js) ----------------
+
+  /** Formas base de un banner que aún no tienes. */
+  function missingIn(save, gen) { return G.DEX.filter(p => inBanner(p, gen) && !save.owned[p.dex]); }
+
+  /** Dex de formas base que no tienes (de todas las generaciones), filtrables por tipo. */
+  function missing(save, type) {
+    return G.DEX.filter(p => G.Mons.isBase(p.dex) && !save.owned[p.dex] && (!type || p.types.includes(type))).map(p => p.dex);
+  }
+
+  /** Vale de tipo: gasta 1 y sortea un tipo con algún Pokémon por conseguir (queda en save.pendingType). */
+  function startTypePick(save) {
+    if (save.pendingType) return { ok: true, type: save.pendingType };
+    if (!G.Shop.count('wishtype')) return { ok: false, reason: 'item' };
+    const types = Object.keys(G.U.TYPE_NAME).filter(t => missing(save, t).length);
+    if (!types.length) return { ok: false, reason: 'none' };
+    G.Shop.take('wishtype');
+    save.pendingType = G.U.pick(types);
+    return { ok: true, type: save.pendingType };
+  }
+
+  /** Reclama el Pokémon de un vale ('type': el de pendingType; 'any': gasta 1 wishany). No toca el pity. */
+  function claim(save, kind, dex) {
+    const mon = G.DEX_BY[dex];
+    if (!mon || !G.Mons.isBase(dex)) return { ok: false, reason: 'owned' };
+    if (kind === 'type') {
+      if (!save.pendingType || !mon.types.includes(save.pendingType)) return { ok: false, reason: 'type' };
+      if (save.owned[dex]) return { ok: false, reason: 'owned' };
+      delete save.pendingType;
+    } else {
+      if (!G.Shop.count('wishany')) return { ok: false, reason: 'item' };
+      if (save.owned[dex]) return { ok: false, reason: 'owned' };
+      G.Shop.take('wishany');
+    }
+    save.owned[dex] = { at: Date.now(), from: 'wish' };
+    return { ok: true };
+  }
+
+  /** Qué vale cae: 80% garantía, 15% tipo, 5% libre. */
+  function rollWish(rand = Math.random) {
+    const x = rand();
+    return x < 0.80 ? 'wishsure' : x < 0.95 ? 'wishtype' : 'wishany';
+  }
+
+  return { debugForceShiny(n = 1) { forceShiny = n; }, missing, startTypePick, claim, rollWish,
            costOf, RATES, PITY_5, SHINY_RATE, SHINY_RATE_IRIS, REFUND, RARITY_NAME, RARITY_COLOR, BANNERS,
            pool, featured, pull, dexOf, hasIris, shinyRate };
 })();

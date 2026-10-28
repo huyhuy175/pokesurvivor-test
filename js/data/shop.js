@@ -28,6 +28,14 @@ G.Shop = (() => {
     }
   }
 
+  /** Vales wish (systems/gacha.js): sólo se ganan jugando, no están en ORDER ni se venden. */
+  ITEMS.wishsure = { name: 'Guarantee Ticket', icon: 'wish', price: 0,
+                     desc: 'A x10 pull whose last Pokémon is one you do not own yet.' };
+  ITEMS.wishtype = { name: 'Type Pick Ticket', icon: 'wish', price: 0,
+                     desc: 'Draws a random type, then you pick any missing Pokémon of that type.' };
+  ITEMS.wishany = { name: 'Free Pick Ticket', icon: 'wish', price: 0,
+                    desc: 'Pick any base-form Pokémon you do not own yet.' };
+
   const save = () => G.DB.save;
   const count = id => { const s = save(); return (s && s.bag && s.bag[id]) || 0; };
   const tmCount = id => { const s = save(); return (s && s.tms && s.tms[id]) || 0; };
@@ -124,7 +132,7 @@ G.Shop = (() => {
     }
     const tm = key.startsWith('tm:') ? key.slice(3) : null;
     if (tm && !dailyTms().includes(tm)) return { ok: false, error: 'Esa MT ya no está a la venta.' };
-    if (!tm && !ITEMS[key]) return { ok: false };
+    if (!tm && (!ITEMS[key] || !ORDER.includes(key))) return { ok: false };   // los vales wish no se venden
     const price = tm ? tmPrice(tm) : ITEMS[key].price;
     if ((tm ? tmCount(tm) : count(key)) >= 999) return { ok: false, error: 'Your Bag is full of that.' };
     if (s.coins < price) return { ok: false, error: 'No tienes Pokémonedas suficientes.' };
