@@ -9,9 +9,8 @@ Normas fijas del dueño del proyecto. Se aplican SIEMPRE.
 ## Comandos
 
 - Jugar/depurar: abrir `dev.html` (carga cada script por separado, sin build). No hay servidor ni dependencias en el repo; `tools/build.js` descarga terser y javascript-obfuscator con `npx`.
-- `node tools/build.js` — genera `index.html`, `js/app.min.js`, `js/lang/*.js` y `version.json`. `--expose` deja `G` accesible y sin ofuscar (para pruebas automáticas); `--sin-seo` omite el SEO.
+- `node tools/build.js` — genera `index.html`, `js/app.min.js` y `version.json`. `--expose` deja `G` accesible y sin ofuscar (para pruebas automáticas); `--sin-seo` omite el SEO.
 - Tests (runner nativo de Node): `node --test tests/` · uno solo: `node --test tests/net.test.cjs` · por nombre: `node --test --test-name-pattern="texto" tests/i18n.test.cjs`.
-- `node tools/build_langs.js --faltan --todo` — lista textos sin traducir.
 - `node tools/export_data.js` vuelca los datos a `tools/cache/gamedata.json`, que lee `tools/make_seo_pages.py` (páginas SEO de `pokedex/`, `movimientos/`, `en/`…).
 
 ## Arquitectura
@@ -20,9 +19,9 @@ Normas fijas del dueño del proyecto. Se aplican SIEMPRE.
 - En `index.html` publicado todo va dentro de una función (G no existe en `window`, anti-trampas): `build.js` depende de que `util.js` contenga exactamente `window.G = window.G || {};`.
 - Carpetas: `core/` (audio, input, db/Firebase, i18n, ajustes, updater), `data/` (tablas de Pokémon, movimientos, enemigos, mejoras, textos), `systems/` (combate, spawner, gacha, rift/legendarios, clima…), `entities/`, `world/`, `net/` (cooperativo, ranking, social), `ui/`. `js/game.js` contiene el bucle de partida y `G.Flow` (flujo menú → run → menú); `js/main.js` arranca y comprueba que están todos los módulos.
 - **Cooperativo**: P2P directo por WebRTC; cada ordenador ejecuta los ataques de SU jugador. Formato binario en `js/net/codec.js` (protocolo en `docs/MULTIPLAYER_PROTOCOL.md`); los tests de `tests/net.test.cjs` cargan `codec.js` con `new Function('G', …)`.
-- **i18n**: español e inglés van dentro del bundle (`js/data/lang-en.js`); fr/it/pt/zh se generan en `js/lang/` por `build_langs.js` desde `js/data/lang-*.js` + `lang-updates.js` y los descarga `locales.js` sólo para el idioma del jugador. Un texto nuevo va en `lang-updates.js` en los cinco idiomas (detalle en `docs/LOCALIZATION.md`); `tests/i18n.test.cjs` falla si falta alguno. Lo que falta cae a inglés.
+- **i18n**: el juego sólo sale en inglés. El código está escrito en español y `js/data/lang-en.js` (más los `G.I18n.add` de los datos) lo traduce; la clave es el texto español. Un texto nuevo va en `lang-en.js`. Francés, italiano, portugués y chino se quitaron; si se añade otro idioma (p. ej. vietnamita) se registra en `js/core/locales.js`.
 - `sw.js` (service worker): red primero para código, caché para sprites/iconos/fuentes. `tools/trailer/` genera el tráiler; `.github/workflows/live.yml` sólo vigila si el canal de YouTube está en directo.
-- Ver también `docs/` (FIREBASE, PUBLICAR, DOMINIO, SEO) y `GDD.md`. `index.html`, `js/app.min.js`, `js/lang/` y `version.json` son generados: no se editan a mano.
+- Ver también `docs/` (FIREBASE, PUBLICAR, DOMINIO, SEO) y `GDD.md`. `index.html`, `js/app.min.js` y `version.json` son generados: no se editan a mano.
 
 ## Publicar una versión
 1. Se edita `dev.html` (nunca `index.html`, que se genera).

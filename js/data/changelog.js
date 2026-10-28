@@ -23,6 +23,8 @@ G.CHANGELOG = [
     ["Estadísticas rápidas sin pausar: mantén la tecla C (o toca el botón de barras junto al de pausa en el móvil) para ver tus estadísticas y el daño de cada ataque mientras sigues jugando. Se actualizan en directo.",
      "Quick stats without pausing: hold the C key (or tap the bars button next to the pause button on mobile) to see your stats and each move's damage while you keep playing. They update live."]
   ], chg: [
+    ["El juego ahora sale siempre en inglés (se quita la selección de idioma). Faltaban algunos textos sin traducir: rasgos de personalidad, ayuda de la pantalla de entrada y otros.",
+     "The game is now always in English (the language selector is gone). A few untranslated texts were fixed: personality traits, the login help text and others."],
     ["La pausa enseña ahora todas tus estadísticas: esquiva, daño a jefes y a enemigos débiles, curación, imán, experiencia y Pokémonedas.",
      "The pause screen now shows all your stats: dodge, damage to bosses and to weakened enemies, healing, magnet, experience and PokéCoins."],
     ["Con más cartas y rarezas, las mejoras de stat normales dan algo menos que antes y los enemigos ganan dificultad con el tiempo: al llegar al minuto 30 tienen un 20 % más de vida y un 15 % más de daño (casi no se nota al principio).",

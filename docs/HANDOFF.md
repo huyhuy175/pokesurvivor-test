@@ -7,7 +7,7 @@
 - Sửa **`dev.html`**, không bao giờ sửa file sinh ra: `index.html`, `js/app.min.js`, `js/lang/`, `version.json`. Hiện các file này **là bản cũ** (chưa chứa tính năng mới).
 - Không commit/push trừ khi chủ dự án yêu cầu. Thư mục là git repo (nhánh `main`). Commit (nếu có) không ghi "Co-Authored-By" hay chữ ký AI (theo CLAUDE.md).
 - Không bật Firebase Identity Platform, không thêm gì tính phí (Cloudflare Worker/TURN đã bỏ).
-- Chuỗi giao diện mới: tiếng Tây Ban Nha trong code; tiếng Anh vào `js/data/lang-en.js`; fr/it/pt-BR/zh-Hans/zh-Hant thêm thành **hàng** trong `js/data/lang-updates.js` (mảng `rows`, thứ tự `[es, fr, it, pt-BR, zh-Hans, zh-Hant]`). Chuỗi có số dùng `{x}` và `G.I18n.f(es, ...vals)`. `node tools/build_langs.js --faltan --todo` chỉ so các khóa đã có, **không** phát hiện chuỗi mới trong code: tự kiểm tra bằng grep.
+- Chuỗi giao diện mới: tiếng Tây Ban Nha trong code; tiếng Anh vào `js/data/lang-en.js`; game chỉ còn tiếng Anh (đã bỏ es/fr/it/pt/zh, `lang-updates.js`, `js/lang/`, `build_langs.js`). Chuỗi mới: khóa tiếng Tây Ban Nha → tiếng Anh trong `lang-en.js`. Chuỗi có số dùng `{x}` và `G.I18n.f(es, ...vals)`.
 - Changelog: `js/data/changelog.js`, es + en, mục `new`/`chg`/`fix` của ngày hiện tại. Hiện có mục `2026-10-27` (passive, tiến hóa, pause) và `2026-10-28` (Lò Tiến Hóa, thẻ mới/độ hiếm, độ khó…). Không ghi thay đổi server/DB/chi phí.
 - Thêm file JS mới: đưa vào khối `<!-- scripts:begin/end -->` của `dev.html` đúng thứ tự tải; nếu bắt buộc thì thêm vào `NEED` ở `js/main.js` (đã có `'PassiveFX','Evo','Forge'`).
 - `build.js` cần `util.js` chứa đúng `window.G = window.G || {};`.

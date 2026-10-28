@@ -54,10 +54,10 @@ G.ModUI = (() => {
   /** "s_w2026-42" -> "Solo · Semana" */
   function boardName(b) {
     const [m, p] = b.split('_');
-    const mode = m === 'g' ? 'Grupo' : 'Solo';
-    const per = p.startsWith('d') ? 'Hoy' : p.startsWith('w') ? 'Semana' : p.startsWith('m') ? 'Mes' : 'Histórico';
+    const mode = G.T(m === 'g' ? 'Grupo' : 'Solo');
+    const per = G.T(p.startsWith('d') ? 'Hoy' : p.startsWith('w') ? 'Semana' : p.startsWith('m') ? 'Mes' : 'Histórico');
     const dex = (b.match(/_p(\d+)$/) || [])[1];
-    return mode + ' · ' + per + (dex && G.DEX_BY[dex] ? ' · sólo ' + G.DEX_BY[dex].name : '');
+    return mode + ' · ' + per + (dex && G.DEX_BY[dex] ? ' · ' + G.T('sólo') + ' ' + G.DEX_BY[dex].name : '');
   }
   // Con la Sentencia de Arceus (minuto 30) casi nadie pasa de ~32-33 min.
   const SUSPECT_T = 33 * 60;
@@ -79,7 +79,7 @@ G.ModUI = (() => {
       row.innerHTML = `<span class="pos" title="veces reportada">${g.n}×</span>`;
       row.appendChild(mons);
       row.insertAdjacentHTML('beforeend', `<span class="who"><b translate="no">${g.names.map(esc).join(' · ')}</b>
-          <small>${esc(boardName(g.board))}${info ? ' · Nv. ' + (info.lv || 1) + ' · ' + (info.kills || 0).toLocaleString(G.I18n.locale) + ' derrotados' : ' · ya no está en el top 50'}</small>
+          <small>${esc(boardName(g.board))}${info ? ' · ' + G.I18n.f('Nv. {x} · {x} derrotados', info.lv || 1, (info.kills || 0).toLocaleString(G.I18n.locale)) : ' · ' + G.T('ya no está en el top 50')}</small>
           ${sus ? '<small class="mod-warn">Más de 33 min: casi imposible con la Sentencia de Arceus</small>' : ''}</span>
         <span class="time${sus ? ' mod-warn' : ''}">${fmt(t)}</span>`);
       const acts = document.createElement('span');

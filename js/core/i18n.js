@@ -13,27 +13,20 @@
  *   3. trozos dentro de un texto más largo, sólo palabras enteras
  * Lo que escriben los jugadores (apodos) va marcado con translate="no".
  *
- * Idioma: el elegido en Ajustes; si no, /en/ en la dirección o el del navegador
- * La selección compartida con la pantalla de carga está en locales.js.
- * add(dict, idioma, contexto) sólo carga el idioma activo; el contexto 'move'
- * distingue Psíquico (movimiento) de Psíquico (tipo). Los IDs no se traducen.
- * {name} conserva el apodo del jugador sin traducirlo; {x} traduce su contenido.
- *
- * Francés, italiano, portugués y chino: cada jugador descarga sólo su diccionario
- * (js/lang/<idioma>.js, generado por tools/build.js y cargado por locales.js antes
- * que el juego, en window.PS_LANG_Q). Lo que no esté en su idioma sale en inglés
- * (nunca en español): por eso en esos idiomas se guarda también el diccionario inglés.
+ * El juego sólo sale en inglés (locales.js). add(dict, idioma, contexto) sólo carga el
+ * idioma activo; el contexto 'move' distingue Psíquico (movimiento) de Psíquico (tipo).
+ * Los IDs no se traducen. {name} conserva el apodo del jugador sin traducirlo; {x}
+ * traduce su contenido.
  */
 G.I18n = (() => {
   const KEY = 'ps.lang';
   const { choices, lang, locale } = window.PS_LOCALES;
   const supported = choices.map(([id]) => id);
 
-  // Dos capas: la del idioma (main) y, en francés, italiano..., la inglesa de reserva (back).
   const layer = () => ({ exact: new Map(), exactLow: new Map(), patterns: [] });
-  const main = layer(), back = lang !== 'es' && lang !== 'en' ? layer() : null;
+  const main = layer();
   let frag = null, fragDirty = false;
-  const fragMap = new Map(), fragMain = new Set();
+  const fragMap = new Map();
   const cache = new Map(), contexts = new Map();
   const nameTemplates = new Set([
     'Faltan por elegir: {x}', 'Esperando a {x}…', '{x} ha dejado la partida',
@@ -49,7 +42,7 @@ G.I18n = (() => {
 
   /** Añade traducciones { 'texto en español': 'traducción' } de un idioma. */
   function add(dict, language = 'en', context = '') {
-    const isMain = language === lang, ly = isMain ? main : language === 'en' && back;
+    const isMain = language === lang, ly = isMain && main;
     if (!ly) return;
     if (context) { if (isMain) contexts.set(context, { ...contexts.get(context), ...dict }); return; }
     let sort = false;
@@ -68,9 +61,7 @@ G.I18n = (() => {
         ly.exact.set(es, en);
         ly.exactLow.set(es.toLowerCase(), en);
         if (es.length >= 4 || /\s/.test(es)) {
-          // Los trozos del idioma mandan sobre los de reserva.
-          const k = es.toLowerCase();
-          if (isMain) { fragMap.set(k, en); fragMain.add(k); } else if (!fragMain.has(k)) fragMap.set(k, en);
+          fragMap.set(es.toLowerCase(), en);
           fragDirty = true;
         }
       }
@@ -90,9 +81,6 @@ G.I18n = (() => {
     }
     return frag;
   }
-
-  // Diccionario del idioma, descargado aparte (ver locales.js).
-  for (const [d, l, c] of window.PS_LANG_Q || []) add(d, l, c);
 
   function keepCase(src, en) {
     if (src === src.toUpperCase() && /\p{L}/u.test(src)) return en.toUpperCase();
@@ -123,7 +111,6 @@ G.I18n = (() => {
     if (!body) return s;
     const upper = body === body.toUpperCase() && /\p{L}/u.test(body);
     let r = whole(main, body, upper);
-    if (r === undefined && back) r = whole(back, body, upper);
     if (r === undefined && fragRe()) {
       r = body.replace(frag, w => keepCase(w, fragMap.get(w.toLowerCase()) || w));
     }
@@ -204,14 +191,6 @@ G.I18n = (() => {
     for (const k of ['fillText', 'strokeText', 'measureText']) {
       const orig = P[k];
       P[k] = function (s, ...a) { return orig.call(this, typeof s === 'string' ? t(s) : s, ...a); };
-    }
-    // Chino: Pixelify no tiene sus letras; se añaden las del sistema al poner la fuente
-    // (una vez, no en cada texto que se dibuja, que frenaría el juego).
-    if (lang.startsWith('zh-')) {
-      const cjk = lang === 'zh-Hant' ? '"PingFang TC","Microsoft JhengHei","Noto Sans CJK TC"' : '"PingFang SC","Microsoft YaHei","Noto Sans CJK SC"';
-      const fd = Object.getOwnPropertyDescriptor(P, 'font');
-      if (fd && fd.set) Object.defineProperty(P, 'font', { configurable: true, enumerable: fd.enumerable, get: fd.get,
-        set(v) { fd.set.call(this, typeof v === 'string' && v.includes('Pixelify') && !v.includes('PingFang') ? v.replace('Pixelify', 'Pixelify,' + cjk) : v); } });
     }
     const oc = window.confirm, oa = window.alert;
     window.confirm = s => oc.call(window, t(s));

@@ -1088,3 +1088,32 @@ G.I18n.add({
   "El gacha ya no da formas evolucionadas, solo Pokémon base. Las formas evolucionadas se consiguen en la Forja Evolutiva.": "The gacha no longer gives evolved forms, only base Pokémon. Evolved forms are unlocked in the Evolution Forge.",
   "Solo las formas base se pueden elegir de compañero. Las formas evolucionadas se ven en la colección (vista previa) y se usan evolucionando durante la partida. Si tu compañero era una forma evolucionada, ahora es su forma base (la recibes si no la tenías).": "Only base forms can be picked as your partner. Evolved forms can be viewed in the collection (preview only) and are used by evolving during a run. If your partner was an evolved form, it is now its base form (you receive it if you did not have it)."
 });
+
+/* Textos que faltaban en inglés (el juego sólo sale en inglés). */
+G.I18n.add({
+  // Rasgos de personalidad (test de compañero inicial)
+  'leal': 'loyal', 'Leal': 'Loyal', 'paciente': 'patient', 'Paciente': 'Patient', 'valiente': 'brave', 'Valiente': 'Brave',
+  'impulsivo': 'impulsive', 'Impulsivo': 'Impulsive', 'prudente': 'cautious', 'Prudente': 'Cautious', 'dulce': 'sweet', 'Dulce': 'Sweet',
+  'tímido': 'shy', 'Tímido': 'Shy', 'travieso': 'mischievous', 'Travieso': 'Mischievous', 'sereno': 'serene', 'Sereno': 'Serene',
+  'astuto': 'cunning', 'Astuto': 'Cunning', 'alegre': 'cheerful', 'Alegre': 'Cheerful', 'tenaz': 'tenacious', 'Tenaz': 'Tenacious',
+  'orgulloso': 'proud', 'Orgulloso': 'Proud', 'solitario': 'solitary', 'Solitario': 'Solitary', 'tranquilo': 'calm', 'Tranquilo': 'Calm',
+  'caótico': 'chaotic', 'Caótico': 'Chaotic',
+  // Ayuda de la pantalla de entrada
+  'Si vinculaste tu Gmail, pulsa': 'If you linked your Gmail, press',
+  'con ese Gmail: es tu misma cuenta. Si no lo vinculaste, no se puede recuperar: crea una cuenta nueva (y esta vez vincula tu Gmail desde el aviso que sale al entrar).':
+    'with that Gmail: it is the same account. If you did not link it, it cannot be recovered: create a new account (and this time link your Gmail from the notice that appears when you log in).',
+  'Vincula tu Gmail: si un día olvidas la contraseña, pulsas': 'Link your Gmail: if you ever forget your password, press',
+  'y es tu misma cuenta, con todo lo tuyo.': 'and it is the same account, with everything you own.',
+  // Moderación del ranking
+  'Moderación': 'Moderation', 'Reportes': 'Reports', 'Baneados': 'Banned', 'Descartar': 'Dismiss', 'Banear': 'Ban', 'Desbanear': 'Unban',
+  'Borrar marca': 'Delete entry', 'Marca borrada': 'Entry deleted', 'Reporte descartado': 'Report dismissed', 'veces reportada': 'times reported',
+  'Quitar marcas de más de 1 hora': 'Remove entries over 1 hour',
+  '¿Quitar del ranking TODAS las marcas de más de 1 hora (todas las tablas)? No se puede deshacer.': 'Remove ALL entries over 1 hour from the leaderboards (all boards)? This cannot be undone.',
+  'Revisando {x} / {x}…': 'Checking {x} / {x}…',
+  'Quitadas {x} marcas de más de 1 hora ({x} tablas)': 'Removed {x} entries over 1 hour ({x} boards)',
+  'No se pudo cargar ({x}).': 'Could not load ({x}).',
+  'No hay reportes.': 'No reports.', 'No hay cuentas baneadas.': 'No banned accounts.',
+  '¿Banear a {x}? No podrán volver a salir en el ranking y se borra su marca.': 'Ban {x}? They will no longer appear on the leaderboard and their entry is deleted.',
+  'ya no está en el top 50': 'no longer in the top 50', 'sólo': 'only', 'No se pudo: {x}': 'Failed: {x}',
+  'Hoy': 'Today', 'Semana': 'Week', 'Mes': 'Month'
+}, 'en');

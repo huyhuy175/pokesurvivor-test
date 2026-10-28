@@ -1,5 +1,9 @@
 # Unified game localization
 
+> **Actualizado 28-10-2026:** el juego sólo sale en inglés. Se quitaron el selector de idioma, español, francés, italiano,
+> portugués y chino (`js/lang/`, `lang-updates.js`, `tools/build_langs.js`). Lo que sigue describe el sistema anterior
+> y sólo sirve como referencia si se añade otro idioma (p. ej. vietnamita) en `js/core/locales.js`.
+
 Based on upstream `e4ba0e173cb7e415f9815c924a48c5c25f516962`, including the
 latest controller, collection filters, combat statistics and security fixes.
 Spanish and English remain available. Added game languages:
