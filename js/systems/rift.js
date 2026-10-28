@@ -16,6 +16,13 @@
  * Cooperativo: lo decide el anfitrión. Mensajes (ver coop.js):
  *   'rift' x y ttl · 'riftx' · 'arena' cfg · 'aw' (ganada) · 'al' (perdida)
  *   y del invitado al anfitrión 're' (he entrado en la grieta).
+ *
+ * Grieta ESPECIAL (minuto 25, una por partida): la abre el anfitrión en cuanto
+ * no hay grieta, arena ni jefe (si no, lo reintenta cada CHECK s hasta la
+ * Sentencia). Dentro espera un legendario APEX (apexDef). Ganar da un vale wish
+ * a cada jugador (cada ordenador tira el suyo) y el vínculo de siempre, pero no
+ * los tickets ni las monedas del legendario normal; perder no da nada.
+ * No hace falta mensaje nuevo: la cfg de 'arena' lleva special: true.
  */
 G.Rift = (() => {
   // (0.14 hasta el 11-10-2026: más grietas para que se vean los vínculos)
@@ -28,10 +35,36 @@ G.Rift = (() => {
   let arena = null;         // { tx, ty, r, dex, shiny, x, y, back, biome, t, phase, endT, bossId }
   let zone = null;          // dónde estaba la última arena { x, y, r } (ver leftBehind)
   let checkT = CHECK, asked = false, downT = 0, misses = 0;
+  // Grieta especial: minuto 25; el jefe, más fuerte (vida también según tu Prestigio × Rank).
+  const SPECIAL_AT = 1500;
+  const APEX = { hp: 6, dmg: 1.8, spd: 1.2, shots: 1.5 };
+  let specialDone = false, specialT = 0;
   const authority = () => !G.Coop.active || G.Coop.isHost;
   const TS = () => G.Tiles.T * G.Sprites.PX;
 
-  function reset() { rift = null; arena = null; zone = null; checkT = CHECK; asked = false; downT = 0; misses = 0; }
+  function reset() {
+    rift = null; arena = null; zone = null; checkT = CHECK; asked = false; downT = 0; misses = 0;
+    specialDone = false; specialT = 0;
+  }
+
+  /** Forma Apex de un legendario (no toca el def de entrada). power: Prestigio × Rank (1 si no se sabe). */
+  function apexDef(def, power = 1) {
+    const d = Object.assign({}, def);
+    d.hp = def.hp * APEX.hp * (power > 0 ? power : 1);
+    d.dmg = def.dmg * APEX.dmg;
+    if (def.shotDmg) d.shotDmg = def.shotDmg * APEX.dmg;
+    d.spd = def.spd * APEX.spd;
+    if (def.shotCd) d.shotCd = def.shotCd / APEX.shots;
+    return d;
+  }
+
+  /** Media del bonus de vida (Prestigio × Rank) de los jugadores que siguen en pie. */
+  function apexPower() {
+    const ps = G.Game.everyone().filter(p => p && !p.dead && p.dex != null);
+    if (!ps.length || !G.Prestige || !G.Rank) return 1;
+    const k = ps.map(p => (G.Prestige.bonus(p.dex).hpMul || 1) * (G.Rank.bonus(p.dex).hpMul || 1));
+    return k.reduce((a, b) => a + b, 0) / k.length;
+  }
 
   /**
    * ¿Sigue este jugador en la arena aunque aquí ya se haya vuelto al mapa?
@@ -46,6 +79,14 @@ G.Rift = (() => {
   // ---------------- grieta en el mapa ----------------
 
   function update(dt, pl, time) {
+    // La especial, aparte: no cuenta en misses ni la para el límite de AT - 120.
+    if (!specialDone && authority() && time >= SPECIAL_AT && time < G.Judgment.AT) {
+      specialT -= dt;
+      if (specialT <= 0) {
+        specialT = CHECK;
+        if (!rift && !arena && !G.EnemyMgr.bossAlive() && open(true)) specialDone = true;
+      }
+    }
     if (rift) {
       rift.t += dt;
       rift.ttl -= dt;
@@ -63,7 +104,8 @@ G.Rift = (() => {
     if (arena) arenaTick(dt, pl);
   }
 
-  function open() {
+  /** @param special  la del minuto 25 (sólo la sabe quien manda: decide la arena). @returns ¿se ha abierto? */
+  function open(special = false) {
     const alive = G.Game.everyone().filter(p => !p.dead);
     const near = G.U.pick(alive.length ? alive : [G.Game.player]);
     for (let i = 0; i < 24; i++) {
@@ -71,9 +113,11 @@ G.Rift = (() => {
       const x = near.x + Math.cos(a) * d, y = near.y + Math.sin(a) * d * 0.85;
       if (!G.World.isFree(x, y, 22)) continue;
       show(x, y, TTL);
+      if (special) rift.special = true;
       if (G.Coop.isHost) G.Coop.broadcast(['rift', Math.round(x), Math.round(y), TTL]);
-      return;
+      return true;
     }
+    return false;
   }
 
   /** Aparece la grieta (también la que manda el anfitrión). */
@@ -97,7 +141,7 @@ G.Rift = (() => {
   /** Quien manda: elige legendario y lugar, y avisa a todos. */
   let nextType = null;          // pruebas/vídeos: tipo de la próxima arena
 
-  function start(forceType) {
+  function start(forceType, special = !!(rift && rift.special)) {
     if (arena) return;
     forceType = forceType || nextType; nextType = null;
     let pool = G.DEX.filter(p => p.leg && G.SPRITE_META[p.dex]);
@@ -114,6 +158,7 @@ G.Rift = (() => {
       // La arena es la de uno de sus tipos, al azar.
       type: forceType || G.U.pick(mon.types)
     };
+    if (special) cfg.special = true;
     if (G.Coop.isHost) G.Coop.broadcast(['arena', cfg]);
     begin(cfg);
     spawnLegend();
@@ -125,7 +170,8 @@ G.Rift = (() => {
     const ts = TS();
     arena = Object.assign({}, cfg, {
       x: cfg.tx * ts + ts / 2, y: cfg.ty * ts + ts / 2,
-      back: { x: pl.x, y: pl.y }, biome: G.World.biome, t: 0, phase: 'fight', endT: 0, bossId: 0
+      back: { x: pl.x, y: pl.y }, biome: G.World.biome, t: 0, phase: 'fight', endT: 0, bossId: 0,
+      special: !!cfg.special, rewarded: false
     });
     zone = { x: arena.x, y: arena.y, r: (cfg.r + 10) * ts };
     rift = null; asked = false; downT = 0;
@@ -160,15 +206,18 @@ G.Rift = (() => {
       behavior: mon.types.some(x => ['psychic', 'electric', 'ghost', 'fairy', 'fire', 'water', 'ice', 'dragon'].includes(x)) ? 'ranged' : 'charger',
       shotDmg: Math.round(18 + t / 40), shotCd: 0.9, range: 300
     };
-    const e = new G.Enemy(def, arena.x, arena.y - ts * 3.5, { hp: 1, spd: 1, dmg: 1 }, true);
+    const e = new G.Enemy(arena.special ? apexDef(def, apexPower()) : def, arena.x, arena.y - ts * 3.5, { hp: 1, spd: 1, dmg: 1 }, true);
     e.legend = true;
+    // Apex: sin los tickets ni las monedas del legendario normal (el premio es el vale wish de won()).
+    if (arena.special) e.apex = true;
     // Choca con las paredes y columnas como tú: si volara por encima de las
     // rocas, tus disparos no podrían alcanzarle (bug de Celebi).
     e.flying = false;
     if (arena.shiny) e.makeShiny();
     G.EnemyMgr.add(e);
     arena.bossId = e.id;
-    G.Spawner.say('¡' + e.name + (e.shiny ? ' shiny' : '') + ' te esperaba en la grieta!', 3.2);
+    if (arena.special) G.Spawner.say('APEX ' + e.name + (e.shiny ? ' (shiny)' : '') + ' awaits you in the rift!', 3.2);
+    else G.Spawner.say('¡' + e.name + (e.shiny ? ' shiny' : '') + ' te esperaba en la grieta!', 3.2);
     G.Camera.kick(1.1);
     G.Audio.sfx('boss');
   }
@@ -204,14 +253,27 @@ G.Rift = (() => {
     arena.phase = 'won'; arena.endT = 5;
     G.Progress.event('rift', { type: arena.type });
     G.Pickups.pullAll();
-    G.Spawner.say('¡Has vencido a ' + G.DEX_BY[arena.dex].name + '! Recoge el premio…', 3.4, true);
+    if (arena.special) G.Spawner.say('You defeated APEX ' + G.DEX_BY[arena.dex].name + '!', 3.4, true);
+    else G.Spawner.say('¡Has vencido a ' + G.DEX_BY[arena.dex].name + '! Recoge el premio…', 3.4, true);
     G.Audio.sfx('legend');
     const pl = G.Game.player;
     if (pl) {
       pl.bonds++;
       G.FX.dmgText(pl.x, pl.y - pl.bodyH - 10, '¡Vínculo!', '#ff8ad8', true);
       G.FX.ring(pl.x, pl.y, 8, 90, '#ff8ad8', 0.7, 5);
+      if (arena.special) wishReward(pl);
     }
+  }
+
+  /** Premio de la especial: cada ordenador tira el vale de SU jugador, una sola vez. */
+  function wishReward(pl) {
+    if (arena.rewarded) return;
+    arena.rewarded = true;
+    const id = G.Gacha.rollWish();
+    G.Shop.give(id, 1);
+    G.DB.commit(true);
+    pl.wishFound = id;
+    G.FX.dmgText(pl.x, pl.y - pl.bodyH - 30, '+1 ' + G.Shop.ITEMS[id].name, '#ffd23f', true);
   }
 
   function lost() {
@@ -284,10 +346,15 @@ G.Rift = (() => {
     reset, update, drawable, onEvent, leftBehind, enterRequest() { if (!arena) start(); },
     get rift() { return rift; }, get arena() { return arena; },
     get inArena() { return !!arena; },
+    get special() { return !!(arena && arena.special); },
+    get misses() { return misses; },
+    SPECIAL_AT, APEX, apexDef,
     get timeLeft() { return arena ? Math.max(0, ARENA_TIME - arena.t) : 0; },
     debugOpen() { open(); },
     /** Para pruebas: arena de un tipo ya. */
     debugArena(type) { start(type); },
+    /** Para pruebas: arena especial (jefe Apex) ya; cuenta como la de esta partida. */
+    debugSpecial(type) { specialDone = true; start(type, true); },
     /** Para vídeos: la próxima grieta en la que entres será de este tipo. */
     debugNextType(type) { nextType = type; }
   };

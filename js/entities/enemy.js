@@ -223,14 +223,16 @@
         if (this.shiny) { G.FX.burst(this.x, cy, '#ffe9a0', 30, 220); G.FX.ring(this.x, this.y, this.r, this.r * 7, '#9ae6ff', 0.7, 5); }
         return;
       }
-      // (Los legendarios de la Sentencia de Arceus sólo dan experiencia.)
-      if (this.boss && !this.judge) {
+      // (Los legendarios de la Sentencia de Arceus y el Apex de la grieta especial
+      // sólo dan experiencia: el premio del Apex es el vale wish, ver Rift.won.)
+      const plain = this.judge || this.apex;
+      if (this.boss && !plain) {
         G.Camera.kick(0.9);
         for (let i = 0; i < 10; i++) G.Pickups.drop('coin', this.x + G.U.rand(-40, 40), this.y + G.U.rand(-30, 30), 5);
         // Los jefes siempre sueltan un objeto equipable.
         G.Pickups.drop('item', this.x - 26, this.y - 10, G.Items.roll());
       }
-      G.Pickups.dropXp(this.x, this.y, this.xp, this.boss, !!this.legend, !!this.judge);
+      G.Pickups.dropXp(this.x, this.y, this.xp, this.boss, !!this.legend, !!plain);
       if (this.golden && Math.random() < 0.35) G.Pickups.drop('coin', this.x + 6, this.y - 4, 3);
       // Duende del tesoro: Meowth suelta monedas; Gholdengo, un ticket ×10.
       if (this.behavior === 'thief') {
@@ -239,7 +241,7 @@
         if (this.def.loot === 'ticket10') G.Pickups.drop('ticket10', this.x, this.y - 12, 1);
         G.FX.ring(this.x, this.y, this.r, this.r * 5, '#ffd23f', 0.6, 4);
       }
-      if (this.legend) {
+      if (this.legend && !this.apex) {
         // El legendario de la grieta: tickets sueltos y monedas (el ×10, como
         // la mitad de las veces; antes daba 2 siempre).
         for (let i = 0; i < 3; i++) G.Pickups.drop('ticket', this.x + G.U.rand(-30, 30), this.y + G.U.rand(-20, 20), 1);

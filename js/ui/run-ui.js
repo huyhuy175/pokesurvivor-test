@@ -138,6 +138,7 @@ G.RunUI = (() => {
       ${r.crystals ? `<div style="grid-column:1/-1"><span>Mega Crystals</span><b>+${r.crystals}</b></div>` : ''}
       ${r.mats ? `<div style="grid-column:1/-1"><span>Mega Materials</span><b>+${r.mats}</b></div>` : ''}
       ${r.gems ? `<div style="grid-column:1/-1"><span>Gems</span><b>+${r.gems}</b></div>` : ''}
+      ${r.wish && G.Shop.ITEMS[r.wish] ? `<div style="grid-column:1/-1"><span>Apex reward</span><b class="gold">${G.Icons.html(G.Shop.ITEMS[r.wish].icon, 22)} +1 ${G.T(G.Shop.ITEMS[r.wish].name)}</b></div>` : ''}
       ${r.xp && (r.xp.gained || r.xp.capped) ? `<div style="grid-column:1/-1"><span>Pokémon EXP</span><b>${r.xp.capped && !r.xp.gained ? 'Level limit reached' : '+' + r.xp.gained + ' (Lv ' + r.xp.level + ')'}</b></div>` : ''}
       ${r.t1 || r.t10 ? `<div style="grid-column:1/-1"><span>Tickets del gacha</span><b>
         ${r.t1 ? G.Icons.html('ticket', 22) + ' +' + r.t1 + ' ' : ''}${r.t10 ? G.Icons.html('ticket10', 22) + ' +' + r.t10 + ' ×10' : ''}</b></div>` : ''}

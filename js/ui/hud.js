@@ -231,7 +231,7 @@ G.HUD = (() => {
       ctx.textAlign = 'center';
       ctx.font = F(800, 12);
       ctx.fillStyle = '#d9c2ff';
-      ctx.fillText('GRIETA · ' + G.U.mmss(G.Rift.timeLeft), w / 2, boss ? 98 : 76);
+      ctx.fillText((G.Rift.special ? 'APEX RIFT · ' : 'GRIETA · ') + G.U.mmss(G.Rift.timeLeft), w / 2, boss ? 98 : 76);
     }
 
     // Eventos: cuenta atrás, flecha al Pokémon perdido / a la marca y a los duendes.

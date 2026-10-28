@@ -369,7 +369,7 @@ G.Game = (() => {
     if (sent) sent.then(b => { if (b && b.some(p => p !== 'a')) G.DB.commit(true); }).catch(() => {});
 
     G.RunUI.showOver({
-      dead, time, level: pl.level, kills: pl.kills, bosses: pl.bosses, coins, record, t1: pl.t1, t10: pl.t10, shards: pl.shardsFound || 0, crystals: pl.crystalsFound || 0, mats: pl.matsFound || 0, gems: pl.gemsFound || 0, xp, judge,
+      dead, time, level: pl.level, kills: pl.kills, bosses: pl.bosses, coins, record, t1: pl.t1, t10: pl.t10, shards: pl.shardsFound || 0, crystals: pl.crystalsFound || 0, mats: pl.matsFound || 0, gems: pl.gemsFound || 0, wish: pl.wishFound || null, xp, judge,
       moves: pl.moves, caught,
       breakdown: Object.entries(parts).filter(([, v]) => v).map(([k, v]) => `${k} ${v}`).join(' · ') +
                  (mul > 1 ? ` · ×${mul.toFixed(2)} Fortuna` : '')
