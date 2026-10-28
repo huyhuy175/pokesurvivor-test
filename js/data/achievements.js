@@ -89,6 +89,9 @@ G.AchDefs = (() => {
   // Fragmentos Evolutivos (Forja Evolutiva) según el escalón; los logros de legendarios, que son muchos, dan menos.
   for (const a of LIST) a.reward.shards = a.id.startsWith('leg_') ? 3 : { 1: 5, 2: 15, 3: 40 }[a.tier];
 
+  // Gemas (Prestigio, systems/prestige.js) a partir del segundo escalón; los logros de legendarios no dan.
+  for (const a of LIST) if (!a.id.startsWith('leg_') && a.tier >= 2) a.reward.gems = { 2: 1, 3: 3 }[a.tier];
+
   const BY = {};
   for (const a of LIST) BY[a.id] = a;
 

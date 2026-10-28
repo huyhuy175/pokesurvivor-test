@@ -120,6 +120,7 @@ G.Progress = (() => {
     if (r.t1) s.tickets.t1 += r.t1;
     if (r.t10) s.tickets.t10 += r.t10;
     if (r.shards) s.shards = (s.shards || 0) + r.shards;
+    if (r.gems) s.gems = Math.min(1e9, (s.gems || 0) + r.gems);
     if (r.crystals) {
       s.cry = s.cry || {};
       for (const t of Object.keys(r.crystals)) s.cry[t] = Math.min(1e9, (s.cry[t] || 0) + r.crystals[t]);
@@ -132,6 +133,7 @@ G.Progress = (() => {
     if (r.t10) p.push(G.Icons.html('ticket10', 12) + ' ' + r.t10 + ' ×10');
     if (r.t1) p.push(G.Icons.html('ticket', 12) + ' ' + r.t1);
     if (r.shards) p.push(G.Icons.html('shard', 12) + ' ' + r.shards);
+    if (r.gems) p.push(G.Icons.html('gem', 12) + ' ' + r.gems);
     if (r.megaCry) p.push('+' + r.megaCry + ' Mega Crystals');
     if (r.coins) p.push('<span class="coin"></span> ' + r.coins);
     return p.join(' &nbsp;');

@@ -107,7 +107,7 @@ G.Game = (() => {
     const save = G.DB.save;
     // Con su naturaleza aplicada (una copia: ver systems/mons.js).
     const mon = G.Mons.monFor(save.partner);
-    const perks = G.Upgrades.perks(G.DB.upgradesOf(mon.dex));
+    const perks = G.Prestige.apply(G.Upgrades.perks(G.DB.upgradesOf(mon.dex)), mon);     // más el nivel permanente y las estrellas
 
     G.UI.hideAll();
     G.UI.chrome(false);
@@ -222,8 +222,7 @@ G.Game = (() => {
     },
     levelStart(level) {
       // (Si tenías abierta la elección de objeto, vuelve al terminar: afterLevelUp.)
-      if (state === 'choice' && (openItem || evoOpen) && G.Coop.active) G.Coop.holdEnd();
-      evoOpen = false;     // (si era la elección de forma, vuelve a salir al terminar: sigue lista)
+      if (state === 'choice' && openItem && G.Coop.active) G.Coop.holdEnd();
       state = 'levelup';
       G.UI.hide('scr-pause');
       G.Audio.sfx('levelup');
@@ -341,6 +340,7 @@ G.Game = (() => {
     const record = time > save.stats.bestTime;
 
     save.coins += coins;
+    const xp = G.Prestige.grantXp(pl.startDex, { time, level: pl.level, kills: pl.kills, bosses: pl.bosses });
     bankTickets(false);
     save.stats.runs++;
     save.pused = save.pused || {};
@@ -369,7 +369,7 @@ G.Game = (() => {
     if (sent) sent.then(b => { if (b && b.some(p => p !== 'a')) G.DB.commit(true); }).catch(() => {});
 
     G.RunUI.showOver({
-      dead, time, level: pl.level, kills: pl.kills, bosses: pl.bosses, coins, record, t1: pl.t1, t10: pl.t10, shards: pl.shardsFound || 0, crystals: pl.crystalsFound || 0, judge,
+      dead, time, level: pl.level, kills: pl.kills, bosses: pl.bosses, coins, record, t1: pl.t1, t10: pl.t10, shards: pl.shardsFound || 0, crystals: pl.crystalsFound || 0, mats: pl.matsFound || 0, gems: pl.gemsFound || 0, xp, judge,
       moves: pl.moves, caught,
       breakdown: Object.entries(parts).filter(([, v]) => v).map(([k, v]) => `${k} ${v}`).join(' · ') +
                  (mul > 1 ? ` · ×${mul.toFixed(2)} Fortuna` : '')
@@ -447,35 +447,6 @@ G.Game = (() => {
       G.Spawner.say('¡Vínculo! ' + group.length + ' movimientos a la vez', 2.6, true);
       if (state === 'choice') state = holdBy.length ? 'held' : 'playing';
       if (G.Coop.active) G.Coop.holdEnd();
-    });
-  }
-
-  /**
-   * Evolución del Pokémon (systems/evolution.js): se mira en cada fotograma. Con una sola
-   * forma posible evoluciona sola; con varias salen cartas para elegir (en grupo, todo
-   * parado hasta que eliges, como con el vínculo).
-   */
-  let evoOpen = false;               // la elección de forma está en pantalla
-  function offerEvolution() {
-    if (!pl || pl.dead || pl.evolving || state !== 'playing' || G.Judgment.cinematic) return;
-    // Evolución normal o, si no hay, Megaevolución (systems/mega.js): mismas cartas y mismo flujo.
-    const E = G.Evo.ready(pl) ? G.Evo : G.Mega.ready(pl) ? G.Mega : null;
-    if (!E) return;
-    if (['scr-bond', 'scr-pause', 'scr-item', 'scr-levelup'].some(G.UI.isOpen)) return;
-    const opts = E.options(pl);
-    if (opts.length === 1) { (E === G.Evo ? G.Evo.evolveNow : G.Mega.megaNow)(pl, opts[0]); return; }
-    G.Sprites.preload(opts, 4000, pl.shiny);
-    state = 'choice'; evoOpen = true;
-    if (G.Coop.active) G.Coop.holdStart();
-    G.Audio.sfx('levelup');
-    G.RunUI.showLevelUp(pl.level, E.cards(pl), card => {
-      evoOpen = false;
-      const from = pl.mon.name;
-      card.apply(pl);
-      E.celebrate(pl, from, pl.dex);
-      if (state === 'choice') state = holdBy.length ? 'held' : 'playing';
-      if (G.Coop.active) G.Coop.holdEnd();
-      afterLevelUp();                // objetos que esperaban a que se cerrara la pantalla
     });
   }
 
@@ -784,7 +755,6 @@ G.Game = (() => {
     G.Audio.music(G.Judgment.active ? G.Judgment.music : G.Rift.inArena ? 'rift' : G.EnemyMgr.bossAlive() ? 'boss' : G.BIOME_MUSIC[biome % G.BIOME_MUSIC.length]);
     if (!coop || G.Coop.isHost) maybeLevelUp();
     if (pl.bonds > 0) offerBond(true);
-    offerEvolution();
     if (G.Coop.isHost) checkAllDown(dt);
   }
 

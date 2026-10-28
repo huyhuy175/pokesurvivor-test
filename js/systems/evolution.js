@@ -1,6 +1,7 @@
 /* ============ evolution.js — evolución del Pokémon durante la partida ============
- * Cuando el Pokémon tiene el nivel exigido y lleva una Piedra Evolutiva, evoluciona
- * (Player.evolve) a una forma que ya tienes en la colección. Las cadenas están en
+ * Cuando el Pokémon tiene el nivel exigido y lleva una Piedra Evolutiva, en la siguiente subida
+ * de nivel sale una carta por cada forma a la que puede evolucionar (levelup.js, formCards); la
+ * eliges tú, o sigues sin ella y la piedra se queda. Evolucionar es Player.evolve, a una forma que ya tienes en la colección. Las cadenas están en
  * data/evolutions.js (G.EVO). La piedra cae de jefes y cofres grandes (siempre, si
  * hay algo a lo que evolucionar) y, rarísima vez, de enemigos normales.
  */
@@ -36,7 +37,7 @@ G.Evo = (() => {
         w: 100, type: 'mevo', key: 'mevo:' + dex, dex,
         icon: 'evostone', color: '#ffd23f', tag: 'EVOLUCIÓN',
         title: from + ' → ' + to, desc: G.I18n.f('Evoluciona a {x}', to),
-        apply: p => { p.evolve(dex); p.evoStone = 0; }
+        apply: p => { const from = p.mon.name; p.evolve(dex); p.evoStone = 0; celebrate(p, from, dex); }
       };
     });
   }
@@ -69,6 +70,7 @@ G.Evo = (() => {
     if (e.judge) return;
     if (e.boss) grantShards(pl, SHARDS.boss);
     if (G.Mega) G.Mega.onKill(pl, e, rand);
+    if (G.Prestige) G.Prestige.onKill(pl, e, rand);
     if (lootFor(pl, e.boss ? 'boss' : 'enemy', rand)) grantStone(pl);
   }
 
@@ -86,20 +88,5 @@ G.Evo = (() => {
     G.Spawner.say(G.I18n.f('¡{x} ha evolucionado a {x}!', from, G.DEX_BY[dex].name), 3, true);
   }
 
-  /** Evoluciona ya a `dex` (con su hoja de sprites cargada). Una sola vez aunque se llame dos. */
-  async function evolveNow(pl, dex) {
-    if (pl.evolving) return;
-    pl.evolving = true;
-    try {
-      await G.Sprites.preload([dex], 4000, pl.shiny);
-      const g = G.Game;
-      if (pl.dead || !(pl.evoStone > 0) || (g && (g.player !== pl || g.state === 'over' || g.state === 'ui'))) return;   // otra partida o ya acabó
-      const from = G.DEX_BY[pl.dex].name;
-      pl.evolve(dex);
-      pl.evoStone = 0;
-      celebrate(pl, from, dex);
-    } finally { pl.evolving = false; }
-  }
-
-  return { LEVELS, SHARDS, levelFor, options, ready, lootFor, cards, grantStone, grantShards, onKill, onChest, celebrate, evolveNow };
+  return { LEVELS, SHARDS, levelFor, options, ready, lootFor, cards, grantStone, grantShards, onKill, onChest, celebrate };
 })();

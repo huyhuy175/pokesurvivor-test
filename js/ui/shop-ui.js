@@ -534,7 +534,7 @@ G.ShopUI = (() => {
         G.Audio.sfx('buy');
         G.UI.refreshCoins();
         const icon = b.closest('.upg-item').querySelector('.ic').innerHTML;
-        const from = Scene.cheer(key.startsWith('tm:') ? 'tm' : SHELF_ICON[key]);
+        const from = Scene.cheer(key.startsWith('tm:') || key.startsWith('mat:') ? 'tm' : SHELF_ICON[key]);
         say(G.U.pick(['¡Muchas gracias!', '¡Gracias, vuelve pronto!']));
         render();
         flyToBag(icon, from, key);
@@ -565,14 +565,21 @@ G.ShopUI = (() => {
         : partner && G.Mons.taught(partner).includes(id) ? G.I18n.f('{x} ya la sabe', G.DEX_BY[partner].name) : G.T(m.desc);
       h += row(G.Icons.html('move:' + id, 32), `${G.T('MT')} ${moveName(id)} ${tag}${mine(G.Shop.tmCount(id))}`, note, buyBtn('tm:' + id, G.Shop.tmPrice(id)));
     }
+    h += `</div><h3 style="margin:14px 0 6px">Mega Materials</h3>
+      <p class="sub" style="margin:0 0 8px">Every day there are ${G.Shop.DAILY_MATS} different ones. Unlocking a Mega Evolution in the Forge needs them.</p><div class="upg">`;
+    for (const type of G.Shop.dailyMats()) {
+      const id = G.MegaMats.id(type);
+      h += row(G.MegaMats.dot(type, 28), G.MegaMats.name(type) + mine(G.Shop.count(id)), G.Shop.ITEMS[id].desc, buyBtn('mat:' + type, G.Shop.MAT_PRICE));
+    }
     return h + '</div>';
   }
 
   function bagHtml() {
     const s = G.DB.save;
     const items = G.Shop.ORDER.filter(id => G.Shop.count(id) > 0);
+    const mats = G.MegaMats.TYPES.filter(t => G.Shop.count(G.MegaMats.id(t)) > 0);
     const tms = Object.keys(s.tms || {}).filter(id => G.Moves.BY_ID[id] && s.tms[id] > 0).sort((a, b) => moveName(a).localeCompare(moveName(b)));
-    if (!items.length && !tms.length) {
+    if (!items.length && !tms.length && !mats.length) {
       return `<p class="sub center" style="margin:24px 0">${G.T('Tu Mochila está vacía.')}<br><br>
             <button class="btn gold" data-go-shop>${G.Icons.html('shop', 16)} ${G.T('Ir a la Tienda Kecleon')}</button></p>` + irisHtml();
     }
@@ -581,6 +588,9 @@ G.ShopUI = (() => {
     for (const id of items) {
       const it = G.Shop.ITEMS[id];
       h += row(G.Icons.html(it.icon, 32), G.T(it.name), G.T(it.desc), `<b class="gold">×${G.Shop.count(id)}</b>`);
+    }
+    for (const t of mats) {
+      h += row(G.MegaMats.dot(t, 28), G.MegaMats.name(t), G.Shop.ITEMS[G.MegaMats.id(t)].desc, `<b class="gold">×${G.Shop.count(G.MegaMats.id(t))}</b>`);
     }
     for (const id of tms) {
       // Cuántos de tus Pokémon la pueden aprender.

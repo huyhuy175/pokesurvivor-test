@@ -56,6 +56,9 @@ G.MissionDefs = (() => {
   for (const m of weekly) m.reward.shards = 8;
   // Cristales Mega (systems/mega.js): 2 por misión semanal, del primer tipo del compañero (systems/progress.js, claim).
   for (const m of weekly) m.reward.megaCry = 2;
+  // Gemas (Prestigio, systems/prestige.js): 1 por las misiones diarias de jefe, supervivencia y nivel; 3 por semanal.
+  for (const m of daily) if (['boss', 'survive', 'level'].includes(m.id)) m.reward.gems = 1;
+  for (const m of weekly) m.reward.gems = 3;
 
   const BY = {};
   for (const m of daily.concat(weekly)) BY[m.id] = m;

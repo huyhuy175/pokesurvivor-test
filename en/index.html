@@ -77,8 +77,8 @@
   ]
 }
 </script>
-<link rel="stylesheet" href="css/style.css?v=c68f470baf">
-<script src="js/core/locales.js?v=f74867b398"></script>
+<link rel="stylesheet" href="css/style.css?v=a1892fed2d">
+<script src="js/core/locales.js?v=7a1227699d"></script>
 <script src="js/noframe.js"></script>
 </head>
 <body>
@@ -183,7 +183,8 @@
         <button class="menu-item play" data-go="play">Jugar<small>Entra en la mazmorra</small></button>
         <button class="menu-item" data-go="dex">Pokémon<small id="menu-dex-count">Tu colección</small></button>
         <button class="menu-item" data-go="upgrades">Mejoras<small>Haz más fuerte cada run</small></button>
-        <button class="menu-item" data-go="shop">Tienda Kecleon<small>Mentas, Cápsulas y MT</small></button>
+        <button class="menu-item" data-go="shop">Tienda Kecleon<small>Mentas y MT</small></button>
+        <button class="menu-item" data-go="forge">Forja Evolutiva<small>Fragmentos y evoluciones</small></button>
         <button class="menu-item" data-go="bag">Mochila<small id="menu-bag-sub">Vacía</small></button>
         <button class="menu-item" data-go="gacha">Gacha<small>9 regiones · Pokémon y shinies</small></button>
         <button class="menu-item" data-go="goals">Misiones<small id="menu-goals-sub">Misiones, logros y perfil</small></button>
@@ -483,7 +484,7 @@
         <h2 style="margin:0">Tienda Kecleon</h2>
         <button class="btn small ghost" data-back>Volver</button>
       </div>
-      <p class="sub" style="margin:8px 0 0" id="shop-hello">¡Bienvenido! Mentas, Cápsulas y MT. Lo que compres va a tu Mochila (en el menú principal); úsalo desde la ficha de cada Pokémon en la colección.</p>
+      <p class="sub" style="margin:8px 0 0" id="shop-hello">¡Bienvenido! Mentas y MT. Lo que compres va a tu Mochila (en el menú principal); úsalo desde la ficha de cada Pokémon en la colección.</p>
       <div id="shop-body"></div>
     </div>
   </div>
@@ -497,6 +498,15 @@
   </div>
 </section>
 
+<!-- ====== Forja Evolutiva ====== -->
+<section id="scr-forge" class="scr dim hidden">
+  <div class="box wide">
+    <div class="row between"><h2>Forja Evolutiva</h2><button class="btn small ghost" data-back>Volver</button></div>
+    <p class="sub" id="forge-hello">Gasta Fragmentos Evolutivos para desbloquear la forma evolucionada de un Pokémon que ya tienes. No se eligen de compañero: se usan al evolucionar durante la partida, con una Piedra Evolutiva. Los fragmentos caen de los jefes y los cofres grandes, y se ganan con misiones y logros.</p>
+    <div id="forge-body"></div>
+  </div>
+</section>
+
 <!-- ====== Mejoras ====== -->
 <section id="scr-upgrades" class="scr dim hidden">
   <div class="box wide">
@@ -504,7 +514,7 @@
     <div class="upg-head">
       <canvas id="upg-stage" class="stage" width="120" height="96"></canvas>
       <div class="grow">
-        <p class="sub" style="margin:0">Cada Pokémon tiene sus propias mejoras: sólo cuentan cuando juegas con él.</p>
+        <p class="sub" style="margin:0">Cada Pokémon tiene sus propias mejoras: sólo cuentan cuando juegas con él, y se mantienen cuando evoluciona durante la partida.</p>
         <div class="row" style="margin-top:8px">
           <label for="upg-mon" style="margin:0">Pokémon</label>
           <select id="upg-mon" class="field" style="width:auto;min-width:220px"></select>
@@ -553,7 +563,7 @@
 <section id="scr-levelup" class="scr dim hidden">
   <div class="box center">
     <h2>¡Nivel <span id="lvl-num">2</span>!</h2>
-    <p class="sub">Elige una recompensa · <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></p>
+    <p class="sub">Elige una recompensa · <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd></p>
     <div id="cards" class="cards"></div>
     <button id="lvl-reroll" class="btn small ghost hidden" data-sfx="none" style="margin-top:10px">Cambiar opciones (<span id="lvl-rr-n">1</span>) · <kbd>R</kbd></button>
     <p id="lvl-wait" class="note hidden"></p>
@@ -577,6 +587,8 @@
     <div id="item-cards" class="cards"></div>
   </div>
 </section>
+
+<div id="hud-stats" class="hud-stats hidden"></div>
 
 <section id="scr-pause" class="scr dim hidden">
   <div class="box center pause-box">
@@ -603,6 +615,6 @@
 </section>
 
 <!-- datos generados -->
-<script defer src="js/app.min.js?v=1a52cc838c"></script>
+<script defer src="js/app.min.js?v=6e9278830c"></script>
 </body>
 </html>

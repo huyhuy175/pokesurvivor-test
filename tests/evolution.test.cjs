@@ -80,16 +80,16 @@ test('lootFor: boss and chest always when eligible without a stone; enemies rare
   assert.equal(G.Evo.lootFor(mk(4, 12), 'enemy', () => 0.0006), false);
   assert.equal(G.Evo.lootFor(mk(4, 5), 'enemy', () => 0), false);
 });
-test('cards: one per owned target, apply evolves and consumes the stone', () => {
-  const G = evoWorld([134, 136]);
-  const pl = mk(133, 12, 1); const got = [];
-  pl.evolve = d => got.push(d);
+test('cards: one per owned target; applying one evolves, consumes the stone and celebrates', () => {
+  const G = liveWorld([134, 136]);
+  const pl = live(133, 12, 1); pl.mon = { name: 'Eevee' };
   const cards = G.Evo.cards(pl);
   assert.equal(cards.length, 2);
   assert.ok(cards.every(c => c.type === 'mevo' && c.icon && c.title && c.desc));
   cards.find(c => c.dex === 136).apply(pl);
-  assert.deepEqual(got, [136]);
+  assert.deepEqual(pl.evolved, [136]);
   assert.equal(pl.evoStone, 0);
+  assert.match(G.said, /Eevee/);
 });
 
 // ---------------- Player.evolve ----------------
@@ -184,29 +184,12 @@ test('grantStone gives one stone and onKill/onChest follow the loot rules', () =
   G.Evo.onKill(pl5, {}, () => 0.0001);                                 // enemigo normal con suerte
   assert.equal(pl5.evoStone, 1);
 });
-test('evolveNow evolves once, consumes the stone, and ignores a second call while busy', async () => {
-  const G = liveWorld([5]);
-  const pl = live(4, 12, 1);
-  const a = G.Evo.evolveNow(pl, 5), b = G.Evo.evolveNow(pl, 5);
-  await Promise.all([a, b]);
-  assert.deepEqual(pl.evolved, [5]);
-  assert.equal(pl.evoStone, 0);
-  assert.equal(pl.evolving, false);
-  assert.match(G.said, /5|Charmeleon/);
-});
-test('evolveNow does nothing if the player died while loading', async () => {
-  const G = liveWorld([5]);
-  const pl = live(4, 12, 1);
-  G.Sprites.preload = () => { pl.dead = true; return Promise.resolve(); };
-  await G.Evo.evolveNow(pl, 5);
-  assert.deepEqual(pl.evolved, []);
-  assert.equal(pl.evolving, false);
-});
-test('game wiring: hooks are in place and the evolution screen cannot be rerolled', () => {
+test('game wiring: hooks are in place and evolution is a level-up card, not an automatic trigger', () => {
   assert.match(source('js/entities/enemy.js'), /G\.Evo\.onKill\(/);
   assert.match(source('js/world/world.js'), /G\.Evo\.onChest\(/);
-  assert.match(source('js/game.js'), /offerEvolution\(\)/);
-  assert.match(source('js/ui/run-ui.js'), /mevo/);
+  assert.doesNotMatch(source('js/game.js'), /offerEvolution|evoOpen|evolveNow|megaNow/);
+  assert.match(source('js/systems/levelup.js'), /formCards\(pl\)/);
+  assert.doesNotMatch(source('js/ui/run-ui.js'), /some\(c => c\.type === 'mevo'\)/);       // se puede cambiar de cartas
   const html = source('dev.html');
   assert.ok(html.indexOf('systems/evolution.js') < html.indexOf('js/game.js'));
 });
@@ -252,29 +235,6 @@ test('endRun records the starting Pokémon, not the evolved one', () => {
   assert.match(game, /types: pl\.startTypes/);
   assert.match(game, /dex: pl\.startDex, shiny: pl\.startShiny/);
 });
-test('evolveNow ignores a stale player (run ended or replaced while the sprites loaded)', async () => {
-  const G = liveWorld([5]);
-  const pl = live(4, 12, 1);
-  G.Game = { player: {}, state: 'playing' };                  // otra partida ya ha empezado
-  await G.Evo.evolveNow(pl, 5);
-  assert.deepEqual(pl.evolved, []);
-  assert.equal(pl.evoStone, 1);
-  const pl2 = live(4, 12, 1);
-  G.Game = { player: pl2, state: 'over' };                    // la partida ha acabado
-  await G.Evo.evolveNow(pl2, 5);
-  assert.deepEqual(pl2.evolved, []);
-  G.Game = { player: pl2, state: 'playing' };
-  await G.Evo.evolveNow(pl2, 5);
-  assert.deepEqual(pl2.evolved, [5]);
-});
-test('a co-op level-up closes an open evolution choice and releases the group hold', () => {
-  const game = source('js/game.js');
-  const start = game.slice(game.indexOf('levelStart(level) {'), game.indexOf('waiting(names)'));
-  assert.match(start, /evoOpen/);
-  assert.match(start, /holdEnd\(\)/);
-  assert.match(game, /evoOpen = true/);
-});
-
 // ---------------- fragmentos evolutivos de la partida ----------------
 function shardWorld(owned) {
   const G = liveWorld(owned);

@@ -28,6 +28,10 @@ G.Icons = (() => {
     shard: { pal: { c: '#7fe3ff', w: '#e8fbff', d: '#3aa6d6' }, rows: [
       '.....kk.....', '....kwck....', '...kwcccck..', '..kwccccdck.', '..kcccccddk.', '..kcccccddk.',
       '...kcccddk..', '...kccdddk..', '....kcddk...', '.....kdk....', '......k.....', '............'] },
+    // Gema (28-10-2026): la moneda del Prestigio.
+    gem: { pal: { c: '#7dffb0', w: '#e8fff2', d: '#2fbf74' }, rows: [
+      '............', '...kkkkkk...', '..kwwcccdk..', '.kwwccccddk.', 'kkkkkkkkkkkk', '.kwcccccddk.',
+      '..kwccccdk..', '...kwcccdk..', '....kwcdk...', '.....kdk....', '......k.....', '............'] },
     mint: { pal: { g: '#5fe08a', w: '#d6ffe2' }, rows: [
       '............', '.......kkk..', '.....kkgggk.', '....kgggwgk.', '...kgggwggk.', '..kgggwgggk.',
       '..kggwgggk..', '.kggwgggk...', '.kgwgggk....', '.kwkkkk.....', 'kk..........', 'k...........'] },

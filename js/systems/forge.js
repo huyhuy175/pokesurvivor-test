@@ -14,6 +14,8 @@ G.Forge = (() => {
   /** Mega: Fragmentos (normal / X, Y, Z) y Cristales de sus tipos (8 si es de un tipo, 6 + 6 si de dos). */
   const MEGA_SHARDS = { mega: 400, xy: 450 };
   const MEGA_CRYSTALS = { one: 8, two: 6 };
+  /** Materiales Mega de sus tipos (en la Mochila; ver data/mega-mats.js): 5 si es de un tipo, 3 + 3 si de dos. */
+  const MEGA_MATS = { one: 5, two: 3 };
 
   /**
    * Lo que se puede forjar ahora: { from, to, price } por cada forma que aún no tienes y
@@ -46,11 +48,16 @@ G.Forge = (() => {
     return { ok: true };
   }
 
-  /** Lo que cuesta desbloquear la Mega `to`: { shards, crystals: { tipo: n } }. */
+  /** Lo que cuesta desbloquear la Mega `to`: { shards, crystals: { tipo: n }, mats: { tipo: n } }. */
   function megaCost(to) {
-    const m = G.DEX_BY[to];
-    const n = m.types.length === 1 ? MEGA_CRYSTALS.one : MEGA_CRYSTALS.two;
-    return { shards: m.form === 'mega' ? MEGA_SHARDS.mega : MEGA_SHARDS.xy, crystals: Object.fromEntries(m.types.map(t => [t, n])) };
+    const m = G.DEX_BY[to], one = m.types.length === 1;
+    const n = one ? MEGA_CRYSTALS.one : MEGA_CRYSTALS.two;
+    const k = one ? MEGA_MATS.one : MEGA_MATS.two;
+    return {
+      shards: m.form === 'mega' ? MEGA_SHARDS.mega : MEGA_SHARDS.xy,
+      crystals: Object.fromEntries(m.types.map(t => [t, n])),
+      mats: G.MegaMats ? Object.fromEntries(m.types.map(t => [t, k])) : {}
+    };
   }
 
   /** Megas que se pueden desbloquear ya: las de formas que tienes y que aún no tienes. */
@@ -64,7 +71,7 @@ G.Forge = (() => {
     return out.sort((a, b) => a.shards - b.shards || a.to - b.to);
   }
 
-  /** Desbloquea la Mega `to`. → { ok: true } o { ok: false, reason: 'unknown'|'owned'|'locked'|'shards'|'crystals' } */
+  /** Desbloquea la Mega `to`. → { ok: true } o { ok: false, reason: 'unknown'|'owned'|'locked'|'shards'|'crystals'|'mats' } */
   function buyMega(to) {
     const s = G.DB.save;
     if (!s || !G.MEGA_FROM || G.MEGA_FROM[to] == null) return { ok: false, reason: 'unknown' };
@@ -73,12 +80,14 @@ G.Forge = (() => {
     if (!offer) return { ok: false, reason: 'locked' };
     if ((s.shards || 0) < offer.shards) return { ok: false, reason: 'shards' };
     for (const t of Object.keys(offer.crystals)) if (G.DB.crystals(t) < offer.crystals[t]) return { ok: false, reason: 'crystals' };
+    for (const t of Object.keys(offer.mats)) if (G.Shop.count(G.MegaMats.id(t)) < offer.mats[t]) return { ok: false, reason: 'mats' };
     s.shards -= offer.shards;
     for (const t of Object.keys(offer.crystals)) s.cry[t] -= offer.crystals[t];
+    for (const t of Object.keys(offer.mats)) for (let i = 0; i < offer.mats[t]; i++) G.Shop.take(G.MegaMats.id(t));
     G.DB.grant(to, 'forge');
     G.DB.commit(true);
     return { ok: true };
   }
 
-  return { PRICE, price, offers, buy, MEGA_SHARDS, MEGA_CRYSTALS, megaCost, offersMega, buyMega };
+  return { PRICE, price, offers, buy, MEGA_SHARDS, MEGA_CRYSTALS, MEGA_MATS, megaCost, offersMega, buyMega };
 })();

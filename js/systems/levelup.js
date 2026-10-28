@@ -234,7 +234,22 @@ G.LevelUp = (() => {
     return out;
   }
 
-  /** Devuelve 4 cartas distintas, elegidas por peso. */
+  /** Tope de cartas de forma (evolución / Mega) en una misma subida de nivel. */
+  const MAX_FORM_CARDS = 5;
+
+  /**
+   * Las cartas para evolucionar o megaevolucionar (systems/evolution.js y mega.js), si el Pokémon
+   * cumple lo exigido y lleva la piedra. Una por forma. Primero la evolución normal; la Mega, sólo si
+   * no queda ninguna. Si no eliges una, la piedra se queda y vuelve a salir en la siguiente subida.
+   */
+  function formCards(pl) {
+    const E = G.Evo && G.Evo.ready(pl) ? G.Evo : G.Mega && G.Mega.ready(pl) ? G.Mega : null;
+    const cards = E ? E.cards(pl).slice(0, MAX_FORM_CARDS) : [];
+    if (cards.length && G.Sprites) G.Sprites.preload(cards.map(c => c.dex), 4000, pl.shiny);    // listas al elegir
+    return cards;
+  }
+
+  /** Devuelve 4 cartas distintas, elegidas por peso (más las de evolución, que siempre salen). */
   function offer(pl, n = 4) {
     const pool = candidates(pl);
     const picked = [];
@@ -242,6 +257,10 @@ G.LevelUp = (() => {
     // Si hay una evolución lista, su carta dorada sale siempre.
     const evo = pool.findIndex(c => c.type === 'evo');
     if (evo >= 0) { const c = pool.splice(evo, 1)[0]; used.add(c.key); picked.push(c); }
+    // Y las de forma (evolución / Mega), con al menos una carta normal más.
+    const forms = formCards(pl);
+    for (const c of forms) { used.add(c.key); picked.push(c); }
+    n = Math.max(n, picked.length + 1);
 
     while (picked.length < n && pool.length) {
       const total = pool.reduce((a, c) => a + c.w, 0);

@@ -13,7 +13,8 @@ G.ForgeUI = (() => {
     const shards = G.DB.save.shards || 0;
     return G.Forge.offersMega().map(o => {
       const crystals = Object.keys(o.crystals).map(type => ({ type, need: o.crystals[type], have: G.DB.crystals(type) }));
-      return Object.assign({}, o, { crystals, affordable: shards >= o.shards && crystals.every(c => c.have >= c.need) });
+      const mats = Object.keys(o.mats || {}).map(type => ({ type, need: o.mats[type], have: G.Shop.count(G.MegaMats.id(type)) }));
+      return Object.assign({}, o, { crystals, mats, affordable: shards >= o.shards && crystals.every(c => c.have >= c.need) && mats.every(c => c.have >= c.need) });
     });
   }
 
@@ -25,12 +26,13 @@ G.ForgeUI = (() => {
   function megaCard(r) {
     const to = G.DEX_BY[r.to], from = G.DEX_BY[r.from];
     const need = r.crystals.map(c => `<span class="sub" style="font-size:13px${c.have >= c.need ? '' : ';color:#ff8a8a'}">${cap(c.type)} ${c.have}/${c.need}</span>`).join(' · ');
+    const mats = r.mats.map(c => `<span class="sub" style="font-size:13px${c.have >= c.need ? '' : ';color:#ff8a8a'}">${G.MegaMats.dot(c.type, 10)} ${G.MegaMats.name(c.type)} ${c.have}/${c.need}</span>`).join(' · ');
     const el = document.createElement('div');
     el.className = 'panel upg-item';
     el.innerHTML = `<div class="ic"></div>
       <div><b translate="no">${to.name}</b> ${G.UI.stars(to.rarity)}
         <div class="sub" style="font-size:13px">${G.I18n.f('Desde {x}', from.name)} · ${G.UI.typeChips(to.types)}</div>
-        <div>${need}</div></div>
+        <div>${need}</div>${mats ? `<div>${mats}</div>` : ''}</div>
       <div class="upg-btns"><button class="btn small gold" data-buy-mega="${r.to}" data-sfx="none"${r.affordable ? '' : ' disabled'}>
         ${G.Icons.html('shard', 14)} ${r.shards}</button></div>`;
     el.querySelector('.ic').appendChild(G.UI.spriteCanvas(r.to, 64, 56, { scale: 1, lively: true }));
@@ -128,8 +130,8 @@ G.ForgeUI = (() => {
       G.Audio.sfx('buy');
       G.UI.refreshCoins();
       G.UI.toast(G.I18n.f('¡{x} desbloqueado!', G.DEX_BY[to].name));
-    } else if (r.reason === 'shards' || r.reason === 'crystals') {
-      G.UI.toast(r.reason === 'shards' ? G.T('No tienes suficientes fragmentos') : 'Not enough Mega Crystals');
+    } else if (r.reason === 'shards' || r.reason === 'crystals' || r.reason === 'mats') {
+      G.UI.toast(r.reason === 'shards' ? G.T('No tienes suficientes fragmentos') : r.reason === 'mats' ? 'Not enough Mega Materials' : 'Not enough Mega Crystals');
       G.Audio.sfx('error');
       return;
     }

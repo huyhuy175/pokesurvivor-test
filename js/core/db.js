@@ -93,6 +93,8 @@ G.DB = (() => {
       pabil: {},              // dex -> [0|1|2, fecha]: la habilidad cambiada con Cápsula (2 = oculta)
       tickets: { t1: 0, t10: 0 },   // tickets del gacha (x1 y x10)
       shards: 0,              // Fragmentos Evolutivos (Forja Evolutiva); en la libreta, clave 'sh'
+      gems: 0,                // Gemas (Prestigio de los Pokémon); en la libreta, clave 'g'
+      plv: {},                // dex base -> { xp, star }: nivel permanente y estrellas de Prestigio (systems/prestige.js)
       cry: {},                // Cristales Mega: tipo -> cuántos; en la libreta, clave 'x:<tipo>'
       pity: {},               // generación del banner -> tiradas sin ★5
       legends: {},            // dex -> fecha: legendarios vencidos en grietas
@@ -142,6 +144,9 @@ G.DB = (() => {
    * su forma base (el nivel más alto de cada una), porque al evolucionar en la partida se
    * conservan las de la base y las de la evolucionada ya no se usarían nunca.
    */
+  /** ¿El nivel permanente `o` es mejor que `m`? Gana la mayor estrella y, a igualdad, la mayor EXP. */
+  const plvBetter = (o, m) => !m || (+o.star || 0) > (+m.star || 0) || ((+o.star || 0) === (+m.star || 0) && (+o.xp || 0) > (+m.xp || 0));
+
   function fixPartner(s) {
     const from = G.EVO_FROM;
     if (!from) return;
@@ -164,6 +169,15 @@ G.DB = (() => {
         const mine = s.pupg[root] = isObj(s.pupg[root]) ? s.pupg[root] : {};
         for (const id of Object.keys(s.pupg[d])) mine[id] = Math.max(+mine[id] || 0, +s.pupg[d][id] || 0);
         delete s.pupg[d];
+      }
+    }
+    // El nivel permanente (plv) también es de toda la línea: lo de una forma evolucionada o Mega pasa a la base.
+    if (isObj(s.plv)) {
+      for (const d of Object.keys(s.plv)) {
+        const root = roots(+d)[0];
+        if (root == null || root === +d || !isObj(s.plv[d])) continue;
+        if (!isObj(s.plv[root]) || plvBetter(s.plv[d], s.plv[root])) s.plv[root] = s.plv[d];
+        delete s.plv[d];
       }
     }
     for (const k of ['partner', 'starter']) {
@@ -190,6 +204,7 @@ G.DB = (() => {
     s.tickets.t1 = n(s.tickets.t1);
     s.tickets.t10 = n(s.tickets.t10);
     s.shards = Math.min(1e9, n(s.shards));
+    s.gems = Math.min(1e9, n(s.gems));
     if (isObj(s.cry)) {
       for (const t of Object.keys(s.cry)) {
         const v = Math.min(1e9, n(s.cry[t]));
@@ -271,6 +286,15 @@ G.DB = (() => {
       }
     }
     fixPartner(s);
+    // Nivel permanente y estrellas: sólo Pokémon que existen, estrellas dentro del máximo y EXP dentro del límite.
+    const P = G.Prestige, maxStar = P ? P.MAX_STAR : 5;
+    if (!isObj(s.plv)) s.plv = {};
+    for (const d of Object.keys(s.plv)) {
+      const e = s.plv[d];
+      if (!isObj(e) || (G.DEX_BY && !G.DEX_BY[d])) { delete s.plv[d]; continue; }
+      e.star = Math.min(maxStar, n(e.star));
+      e.xp = P ? Math.min(P.xpTo(P.LV_BASE + P.LV_STEP * e.star), n(e.xp)) : n(e.xp);
+    }
   }
 
   /**
@@ -296,7 +320,8 @@ G.DB = (() => {
     c: [s => s.coins, (s, v) => { s.coins = v; }],
     t1: [s => s.tickets.t1, (s, v) => { s.tickets.t1 = v; }],
     t10: [s => s.tickets.t10, (s, v) => { s.tickets.t10 = v; }],
-    sh: [s => s.shards, (s, v) => { s.shards = v; }]    // Fragmentos Evolutivos (27-10-2026)
+    sh: [s => s.shards, (s, v) => { s.shards = v; }],   // Fragmentos Evolutivos (27-10-2026)
+    g: [s => s.gems, (s, v) => { s.gems = v; }]         // Gemas (28-10-2026)
   };
   /*
    * Desde el 20-10-2026 también la Mochila y las MT (Tienda Kecleon), con la misma
@@ -400,6 +425,12 @@ G.DB = (() => {
       for (const k in older.pupg[d]) mine[k] = Math.max(mine[k] || 0, older.pupg[d][k]);
     }
     r.pupgDone = r.pupgDone || older.pupgDone;
+    // Nivel permanente: gana la mayor estrella y, a igualdad, la mayor EXP (un Prestigio nunca se deshace).
+    r.plv = r.plv || {};
+    for (const d in older.plv || {}) {
+      const o = older.plv[d], m = r.plv[d];
+      if (plvBetter(o, m)) r.plv[d] = Object.assign({}, o);
+    }
     // Favoritos: gana lo último que se hizo con cada uno (poner o quitar), en
     // cualquier aparato. Partidas con cada Pokémon: el mayor de los dos.
     r.dfav = r.dfav || {};

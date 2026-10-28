@@ -158,9 +158,9 @@ const megaOf = (G, base, form) => G.MEGA_DEX.find(m => m.mega === base && (!form
 test('mega cost: one type needs 8 crystals, two types 6 of each; X/Y cost more shards', () => {
   const G = megaForge();
   const single = G.MEGA_DEX.find(m => m.types.length === 1 && m.form === 'mega');
-  assert.deepEqual(G.Forge.megaCost(single.dex), { shards: 400, crystals: { [single.types[0]]: 8 } });
+  assert.deepEqual(G.Forge.megaCost(single.dex), { shards: 400, crystals: { [single.types[0]]: 8 }, mats: {} });
   const x = megaOf(G, 6, 'x');                                       // Charizard X: fuego + dragón
-  assert.deepEqual(G.Forge.megaCost(x), { shards: 450, crystals: { fire: 6, dragon: 6 } });
+  assert.deepEqual(G.Forge.megaCost(x), { shards: 450, crystals: { fire: 6, dragon: 6 }, mats: {} });
 });
 test('offersMega: needs the base form; owned Megas are not offered; sorted by shards then dex', () => {
   assert.deepEqual(megaForge().Forge.offersMega(), []);
@@ -274,27 +274,16 @@ test('megaUp twice does not stack the bonus; clearMega restores the plain Mega',
   assert.ok(pl.hp <= pl.maxHp);
 });
 
-test('megaNow does nothing to a dead player or without a stone, and consumes the stone', async () => {
-  const G = runWorld(), x = megaOf(G, 6, 'x');
-  const dead = lvl36(G); dead.dead = true; dead.megaStone = 1;
-  await G.Mega.megaNow(dead, x);
-  assert.equal(dead.dex, 6);
-  const none = lvl36(G);
-  await G.Mega.megaNow(none, x);
-  assert.equal(none.dex, 6);
-  const ok = lvl36(G); ok.megaStone = 1;
-  await G.Mega.megaNow(ok, x);
-  assert.equal(ok.dex, x); assert.equal(ok.megaStone, 0); assert.equal(ok.evolving, false);
-});
-
 test('cards: one per owned Mega, as evolution-style cards that apply megaUp and consume the stone', () => {
   const G = runWorld(), W = runWorld([megaOf(G, 6, 'x'), megaOf(G, 6, 'y')]);
   const pl = lvl36(W); pl.megaStone = 1;
   const cards = W.Mega.cards(pl);
   assert.equal(cards.length, 2);
   assert.ok(cards.every(c => c.type === 'mevo' && c.tag === 'MEGA'));
+  let said = null; W.Spawner.say = m => { said = m; };
   cards[0].apply(pl);
   assert.equal(pl.dex, megaOf(W, 6, 'x')); assert.equal(pl.megaStone, 0);
+  assert.match(said, /Mega Evolved/);
 });
 
 test('crystals: a boss drops one of its first type, a chest one of the player\'s types, both saved at once', () => {

@@ -1,6 +1,7 @@
 /* ============ mega.js — Megaevolución durante la partida ============
- * Con el nivel exigido y una Piedra Mega, el Pokémon pasa a una Mega que ya has desbloqueado
- * en la Forja (Forge.buyMega). Es el último paso y no se deshace en la partida. Además de los
+ * Con el nivel exigido y una Piedra Mega, en la siguiente subida de nivel sale una carta por cada
+ * Mega que ya has desbloqueado en la Forja (Forge.buyMega; ver levelup.js, formCards). Si la eliges,
+ * el Pokémon pasa a esa Mega. Es el último paso y no se deshace en la partida. Además de los
  * stats de la forma Mega (data/mega.js), recibe una mejora fija (BONUS). La piedra cae de
  * jefes y cofres grandes (si hay una Mega a la que ir) y, rarísima vez, de enemigos normales.
  * Los jefes y los cofres grandes sueltan además un Cristal Mega (se guarda al instante).
@@ -13,6 +14,8 @@ G.Mega = (() => {
   const ENEMY_DROP = 0.0005;
   /** Mejora fija de la Mega: daño, vida máxima (y cuánta se cura al transformarse), velocidad y crítico. */
   const BONUS = { dmg: 0.15, hp: 0.20, heal: 0.25, spd: 0.08, crit: 0.10 };
+  /** Materiales Mega (data/mega-mats.js): enemigo normal (probabilidad de soltar 1), jefe y cofre grande ([mín, máx]). */
+  const MAT_DROP = { enemy: 0.004, boss: [2, 3], chest: [1, 2] };
 
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -39,7 +42,7 @@ G.Mega = (() => {
         w: 100, type: 'mevo', key: 'mega:' + dex, dex,
         icon: 'evostone', color: '#ff6bd6', tag: 'MEGA',
         title: from + ' → ' + to, desc: G.I18n.f('Mega Evolves into {x}', to),
-        apply: p => { p.megaUp(dex); p.megaStone = 0; }
+        apply: p => { const from = p.mon.name; p.megaUp(dex); p.megaStone = 0; celebrate(p, from, dex); }
       };
     });
   }
@@ -59,23 +62,39 @@ G.Mega = (() => {
     G.FX.dmgText(pl.x, pl.y - pl.bodyH - 44, '+1 ' + cap(type) + ' ' + G.T('Crystal'), '#ff6bd6', true);
   }
 
+  /** Materiales del tipo dado: se guardan al instante (como los Cristales). */
+  function grantMats(pl, type, n) {
+    if (!G.MegaMats || !G.Shop || !(n > 0)) return;
+    const added = G.Shop.give(G.MegaMats.id(type), n);      // con la Mochila llena (999) no suma ni avisa
+    if (!added) return;
+    pl.matsFound = (pl.matsFound || 0) + added;          // para la pantalla final
+    G.DB.commit('run');
+    G.FX.dmgText(pl.x, pl.y - pl.bodyH - 60, '+' + added + ' ' + G.MegaMats.name(type), G.MegaMats.color(type), true);
+  }
+  const between = ([lo, hi], rand) => lo + Math.floor(rand() * (hi - lo + 1));
+
   function randomType(rand = Math.random) {
     const all = Object.keys(G.U.TYPE_NAME);
     return all[Math.floor(rand() * all.length)];
   }
 
   /** Cae un enemigo (e.boss: jefe; e.judge: legendario de la Sentencia, no suelta nada). */
-  function onKill(pl, e, rand) {
+  function onKill(pl, e, rand = Math.random) {
     if (e.judge) return;
     // Un jefe sin Pokémon en la Pokédex tiene el tipo de reserva (normal): mejor un tipo al azar que siempre Normal.
-    if (e.boss && e.types && e.types.length) grantCrystal(pl, e.mon === null ? randomType(rand) : e.types[0]);
+    if (e.boss && e.types && e.types.length) {
+      const type = e.mon === null ? randomType(rand) : e.types[0];
+      grantCrystal(pl, type);
+      grantMats(pl, type, between(MAT_DROP.boss, rand));
+    } else if (!e.boss && e.types && e.types.length && rand() < MAT_DROP.enemy) grantMats(pl, e.types[0], 1);
     if (lootFor(pl, e.boss ? 'boss' : 'enemy', rand)) grantStone(pl);
   }
 
   /** Se abre un cofre grande: un cristal de uno de los tipos de tu Pokémon. */
   function onChest(pl, rand = Math.random) {
-    const types = pl.mon.types;
-    grantCrystal(pl, types[Math.floor(rand() * types.length)]);
+    const types = pl.mon.types, type = types[Math.floor(rand() * types.length)];
+    grantCrystal(pl, type);
+    grantMats(pl, type, between(MAT_DROP.chest, rand));
     if (lootFor(pl, 'chest')) grantStone(pl);
   }
 
@@ -86,20 +105,5 @@ G.Mega = (() => {
     G.Spawner.say(G.I18n.f('{x} Mega Evolved into {x}!', from, G.DEX_BY[dex].name), 3, true);
   }
 
-  /** Megaevoluciona ya a `dex` (con su hoja de sprites cargada). Una sola vez aunque se llame dos. */
-  async function megaNow(pl, dex) {
-    if (pl.evolving) return;
-    pl.evolving = true;
-    try {
-      await G.Sprites.preload([dex], 4000, pl.shiny);
-      const g = G.Game;
-      if (pl.dead || !(pl.megaStone > 0) || (g && (g.player !== pl || g.state === 'over' || g.state === 'ui'))) return;
-      const from = G.DEX_BY[pl.dex].name;
-      pl.megaUp(dex);
-      pl.megaStone = 0;
-      celebrate(pl, from, dex);
-    } finally { pl.evolving = false; }
-  }
-
-  return { LEVEL, BONUS, options, ready, lootFor, cards, grantStone, grantCrystal, onKill, onChest, celebrate, megaNow };
+  return { LEVEL, BONUS, MAT_DROP, options, ready, lootFor, cards, grantStone, grantCrystal, grantMats, onKill, onChest, celebrate };
 })();
