@@ -17,6 +17,12 @@ for (const f of ['js/data/moves.js', 'js/entities/vfx.js', 'js/entities/vfx-shap
 const byType = {};
 for (const m of G.Moves.ALL) (byType[m.type] = byType[m.type] || []).push(m);
 
+// Solo se muestran los campos que cada kind dibuja de verdad (combat.js); el resto es el valor por defecto sin uso.
+const SHOWN = {
+  melee: ['melee'], spin: ['melee'], beam: ['beam'], chain: ['beam'], charge: ['beam', 'proj'], aura: ['aura'], buff: ['buff']
+};
+const SHOWN_DEFAULT = ['proj', 'trail', 'aura'];
+
 const cell = v => (v == null || v === false ? '' : `\`${v}\``);
 const lines = [
   '# Aspecto de los movimientos (VFX)',
@@ -31,7 +37,9 @@ let rows = 0;
 for (const [type, moves] of Object.entries(byType)) {
   lines.push(`## ${type}`, '', '| move | kind | proj | beam | melee | aura / buff | trail | hit | paleta |', '|---|---|---|---|---|---|---|---|---|');
   for (const m of moves) {
-    const v = G.VFX.forMove(m);
+    const v0 = G.VFX.forMove(m), shown = SHOWN[m.kind] || SHOWN_DEFAULT;
+    const v = {}; for (const k of ['proj', 'beam', 'melee', 'aura', 'buff', 'trail']) v[k] = shown.includes(k) ? v0[k] : null;
+    v.hit = m.kind === 'buff' ? null : v0.hit; v.pal = v0.pal;
     lines.push(`| ${m.id} | ${m.kind} | ${cell(v.proj)} | ${cell(v.beam)} | ${cell(v.melee)} | ${cell(v.aura || v.buff)} | ${cell(v.trail)} | ${cell(v.hit)} | ${v.pal === m.type ? '' : cell(v.pal)} |`);
     rows++;
   }

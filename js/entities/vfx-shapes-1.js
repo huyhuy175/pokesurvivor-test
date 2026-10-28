@@ -312,7 +312,7 @@
   G.VFX.addMoves({
     // fuego
     'ember':         { proj: 'fire', trail: 'ember' },
-    'flamethrower':  { proj: 'fire_comet', beam: 'fire', trail: 'ember', hit: 'blaze' },
+    'flamethrower':  { proj: 'fire_comet', trail: 'ember', hit: 'blaze' },
     'fire-spin':     { proj: 'fire_ring', trail: 'ember' },
     'heat-wave':     { proj: 'fire_pillar', trail: 'ember' },
     'will-o-wisp':   { proj: 'ball', trail: 'wisp' },
@@ -357,10 +357,10 @@
     'rock-slide':    { proj: 'rock_chip', trail: 'dirt' },
     'rock-tomb':     { proj: 'rock_boulder' },
     'ancient-power': { proj: 'rock' },
-    'power-gem':     { proj: 'shard', trail: 'spark' },
+    'power-gem':     { proj: 'shard', trail: 'spark', hit: 'shatter' },
     // acero
-    'metal-claw':    { melee: 'claw' },
-    'flash-cannon':  { beam: 'steel_bolt', proj: 'steel_bolt' },
+    'metal-claw':    { melee: 'claw', hit: 'slash' },
+    'flash-cannon':  { beam: 'steel_bolt', hit: 'shock' },
     'meteor-mash':   { proj: 'rock', trail: 'spark' },
     'mirror-shot':   { proj: 'steel_blade', trail: 'spark' },
     'gyro-ball':     { melee: 'steel_gear' },

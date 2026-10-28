@@ -305,14 +305,14 @@
     'dragon-rage':   { beam: 'dragon_flame' },
     'dragon-dance':  { buff: 'dragon_scale' },
     'dragon-breath': { proj: 'dragon_flame', trail: 'ember' },
-    'dragon-claw':   { melee: 'dragon_claw' },
-    'outrage':       { melee: 'claw', hit: 'roar' },
+    'dragon-claw':   { melee: 'dragon_claw', hit: 'slash' },
+    'outrage':       { melee: 'claw', hit: 'slash' },
     // siniestro
     'bite':          { melee: 'jaws' },
     'dark-pulse':    { proj: 'dark_orb' },
     'night-shade':   { aura: 'shadow', rise: true },
     'sucker-punch':  { proj: 'dark_claw' },
-    'night-slash':   { melee: 'dark_slash' },
+    'night-slash':   { melee: 'dark_slash', hit: 'slash' },
     // hada
     'fairy-wind':    { proj: 'fairy_sparkle' },
     'dazzling-gleam': { aura: 'fairy_moon' },
@@ -325,18 +325,18 @@
     'psychic':       { proj: 'psy_orb' },
     'psycho-cut':    { proj: 'crescent', hit: 'slash' },
     'extrasensory':  { proj: 'psy_eye' },
-    'mist-ball':     { proj: 'ring', trail: 'wisp' },
+    'mist-ball':     { proj: 'ring', trail: 'wisp', hit: 'bubblepop' },
     // normal
     'tackle':        { melee: 'impact' },
     'quick-attack':  { proj: 'norm_streak' },
-    'swords-dance':  { buff: 'arrow', pal: 'fighting' },
-    'nasty-plot':    { buff: 'arrow', pal: 'psychic' },
-    'agility':       { buff: 'arrow', pal: 'flying' },
-    'harden':        { buff: 'arrow', pal: 'steel' },
-    'body-slam':     { melee: 'impact', hit: 'punch' },
+    'swords-dance':  { buff: 'steel_blade', pal: 'fighting' },
+    'nasty-plot':    { buff: 'psy_orb', pal: 'psychic' },
+    'agility':       { buff: 'fly_swirl', pal: 'flying' },
+    'harden':        { buff: 'steel_gear', pal: 'steel' },
+    'body-slam':     { melee: 'norm_star', hit: 'punch' },
     'hyper-voice':   { proj: 'note' },
     'substitute':    { proj: 'norm_swirl' },
-    'hyper-beam':    { beam: 'star', proj: 'norm_star', hit: 'blaze' },
+    'hyper-beam':    { beam: 'star', proj: 'norm_star', hit: 'shock' },
     'rapid-spin':    { melee: 'impact', proj: 'norm_swirl' }
   });
 })();

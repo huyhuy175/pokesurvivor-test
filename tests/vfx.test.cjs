@@ -107,8 +107,9 @@ const TRAILS = ['ember', 'drip', 'spark', 'bubbles', 'dirt', 'wisp'];
 const SHAPELESS = ['lightning'];                 // beam especial que no es una forma
 const MELEE_BUILTIN = ['vine', 'feather'];       // golpes de hojas que dibuja fx.slash
 
-function shapeSuite(label, file, names, ownMoves) {
-  const load = () => world('js/entities/vfx.js', file);
+function shapeSuite(label, names, ownMoves) {
+  // Los movimientos de una hoja pueden usar formas de la otra (p. ej. un buff de lucha con la espada de acero).
+  const load = () => world('js/entities/vfx.js', 'js/entities/vfx-shapes-1.js', 'js/entities/vfx-shapes-2.js');
 
   test(`${label} registers its shapes with 4-6 frames`, () => {
     const G = load();
@@ -160,7 +161,7 @@ const MOVES_1 = ['ember', 'flamethrower', 'fire-spin', 'heat-wave', 'will-o-wisp
   'rock-throw', 'rock-slide', 'rock-tomb', 'ancient-power', 'power-gem',
   'metal-claw', 'flash-cannon', 'meteor-mash', 'mirror-shot', 'gyro-ball',
   'karate-chop', 'aura-sphere', 'rolling-kick', 'vacuum-wave', 'dynamic-punch'];
-shapeSuite('shapes-1', 'js/entities/vfx-shapes-1.js', SHAPES_1, MOVES_1);
+shapeSuite('shapes-1', SHAPES_1, MOVES_1);
 
 const SHAPES_2 = ['poison_glob', 'poison_skull', 'poison_fang', 'fly_feather', 'fly_slash', 'fly_swirl',
   'bug_stinger', 'bug_wing', 'bug_swarm', 'ghost_soul', 'ghost_face', 'ghost_flame', 'dragon_claw', 'dragon_flame',
@@ -176,7 +177,7 @@ const MOVES_2 = ['sludge', 'poison-sting', 'toxic', 'toxic-spikes', 'acid-spray'
   'confusion', 'psybeam', 'psychic', 'psycho-cut', 'extrasensory', 'mist-ball',
   'tackle', 'quick-attack', 'swords-dance', 'nasty-plot', 'agility', 'harden', 'body-slam', 'hyper-voice',
   'substitute', 'hyper-beam', 'rapid-spin'];
-shapeSuite('shapes-2', 'js/entities/vfx-shapes-2.js', SHAPES_2, MOVES_2);
+shapeSuite('shapes-2', SHAPES_2, MOVES_2);
 
 // ---------------- cobertura de los 103 movimientos ----------------
 
