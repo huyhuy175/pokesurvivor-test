@@ -594,7 +594,50 @@
       cd: 0.7, dmg: 22, speed: 330, life: 1.6, size: 7, homing: 6 },
     { id: 'night-slash', name: 'Tajo Umbrío', type: 'dark', kind: 'spin',
       desc: 'Cortes en giro que alcanzan a todo lo que te rodea.',
-      cd: 1.0, dmg: 11, count: 3, radius: 62 }
+      cd: 1.0, dmg: 11, count: 3, radius: 62 },
+
+    // ---------------- potenciadores nuevos (28-10-2026) ----------------
+    // Mismos que Danza Espada: no hacen daño y acumulan una estadística. crit, critdmg, hp y haste son estadísticas nuevas
+    // (Player.buffs: critNow, critFactor, syncHpBuff, cdNow). Los límites de amount × stacks los vigila tests/buffs.test.cjs.
+    { id: 'bulk-up', name: 'Corpulencia', type: 'fighting', kind: 'buff',
+      desc: 'No hace daño: acumula ATAQUE (físico y especial) mientras esté activo.',
+      cd: 0.9, stat: 'atk', amount: 0.08, dur: 8, stacks: 5 },
+
+    { id: 'calm-mind', name: 'Paz Mental', type: 'psychic', kind: 'buff',
+      desc: 'No hace daño: acumula ATAQUE ESPECIAL mientras esté activo.',
+      cd: 0.85, stat: 'satk', amount: 0.12, dur: 8, stacks: 5 },
+
+    { id: 'iron-defense', name: 'Defensa Férrea', type: 'steel', kind: 'buff',
+      desc: 'No hace daño: acumula DEFENSA mientras esté activo.',
+      cd: 0.9, stat: 'def', amount: 0.09, dur: 8, stacks: 5 },
+
+    { id: 'rock-polish', name: 'Pulido Roca', type: 'rock', kind: 'buff',
+      desc: 'No hace daño: acumula VELOCIDAD mientras esté activo.',
+      cd: 0.85, stat: 'spd', amount: 0.11, dur: 8, stacks: 5 },
+
+    { id: 'ingrain', name: 'Arraigo', type: 'grass', kind: 'buff',
+      desc: 'No hace daño: acumula REGENERACIÓN de vida.',
+      cd: 0.9, stat: 'regen', amount: 2, dur: 9, stacks: 4 },
+
+    { id: 'hone-claws', name: 'Afilagarras', type: 'dark', kind: 'buff',
+      desc: 'No hace daño: acumula ATAQUE (físico) mientras esté activo.',
+      cd: 0.85, stat: 'patk', amount: 0.12, dur: 8, stacks: 5 },
+
+    { id: 'focus-energy', name: 'Foco Energía', type: 'bug', kind: 'buff',
+      desc: 'No hace daño: acumula PROBABILIDAD DE CRÍTICO mientras esté activo.',
+      cd: 0.85, stat: 'crit', amount: 0.03, dur: 8, stacks: 5 },
+
+    { id: 'laser-focus', name: 'Enfoque Láser', type: 'ghost', kind: 'buff',
+      desc: 'No hace daño: acumula DAÑO CRÍTICO mientras esté activo.',
+      cd: 0.9, stat: 'critdmg', amount: 0.08, dur: 8, stacks: 5 },
+
+    { id: 'life-dew', name: 'Rocío Vital', type: 'fairy', kind: 'buff',
+      desc: 'No hace daño: acumula VIDA MÁXIMA mientras esté activo.',
+      cd: 0.9, stat: 'hp', amount: 0.06, dur: 8, stacks: 5 },
+
+    { id: 'volt-charge', name: 'Carga Voltio', type: 'electric', kind: 'buff',
+      desc: 'No hace daño: acumula VELOCIDAD DE ATAQUE mientras esté activo.',
+      cd: 0.85, stat: 'haste', amount: 0.05, dur: 8, stacks: 5 }
   ];
 
   // Cuerpo a cuerpo (12-10-2026): +20 % de daño y +25 % de alcance y de arco
@@ -812,6 +855,65 @@
     return true;
   }
 
+  // ---------------- potencia nominal y movimientos especiales (28-10-2026) ----------------
+  /*
+   * dps() es una MEDIDA INTERNA para comparar movimientos entre sí (los especiales de data/signature-moves.js se
+   * ajustan para valer SIG_POWER veces la mediana de los normales): daño × golpes × alcance / recarga.
+   * AREA es cuántos enemigos suelen caer en cada tipo de ataque. Los valores de partida son una estimación y justo
+   * debajo se NORMALIZAN con los movimientos reales: cada kind se escala para que su mediana valga lo mismo que la
+   * del conjunto (los movimientos normales están equilibrados a mano entre kinds), así SIG_POWER significa lo mismo
+   * en un proyectil que en una órbita o un aura. No es un DPS real, sólo una medida para comparar.
+   */
+  const AREA = {
+    projectile: 1, homing: 1.1, bounce: 1.4, boomerang: 1.5, cone: 1.3, nova: 1.2, orbit: 1.2, melee: 1.3, dash: 1.3,
+    spin: 1.5, beam: 1.6, chain: 1.6, charge: 1.8, aura: 1.5, quake: 1.5, vortex: 1.5, shove: 1.3, stun: 1.4,
+    mine: 1.3, meteor: 1.4, turret: 1.2, trail: 1.3
+  };
+  const SIG_POWER = 4.0;
+
+  function dps(def, lvl = 1) {
+    if (def.kind === 'buff') return 0;
+    const s = Object.assign({}, def);
+    const ups = def.ups || LADDERS[def.kind] || [];
+    for (let i = 0; i < lvl - 1 && i < ups.length; i++) applyMods(s, ups[i].m);
+    let hits = s.count || 1, cd = s.cd;
+    if (s.kind === 'orbit') cd = 0.34;                           // vuelve a golpear cada 0,34 s
+    else if (s.kind === 'turret') { hits = 1; cd = s.rate || 0.5; }    // dispara sin parar mientras dura (dur > recarga)
+    else if (s.kind === 'vortex') hits = (s.dur || 2.6) / 0.4;        // un golpe cada 0,4 s mientras dura
+    return s.dmg * hits * (AREA[s.kind] || 1) / cd;
+  }
+
+  /** Mediana de dps() de los movimientos que hacen daño (los 97 normales). */
+  function midOf(xs) {
+    xs = [...xs].sort((a, b) => a - b);
+    const n = xs.length;
+    return n % 2 ? xs[(n - 1) / 2] : (xs[n / 2 - 1] + xs[n / 2]) / 2;
+  }
+  function median(lvl = 1) { return midOf(RAW.filter(m => m.kind !== 'buff').map(m => dps(m, lvl))); }
+
+  // Normalización de AREA (unas pasadas, hasta que la mediana de cada kind coincide con la global).
+  for (let pass = 0; pass < 12; pass++) {
+    const all = median();
+    for (const k of Object.keys(AREA)) {
+      const xs = RAW.filter(m => m.kind === k).map(m => dps(m));
+      if (xs.length) AREA[k] *= all / midOf(xs);
+    }
+  }
+
+  /**
+   * Da de alta un movimiento fuera del catálogo (los especiales de cada especie): queda en BY_ID para poder
+   * instanciarlo, subirlo y repetirlo por la red, pero NO en ALL ni en POOL (no sale en las cartas de nivel).
+   */
+  function register(def) {
+    if (def.kind === 'buff') throw new Error('register: buff moves are not supported (' + def.id + ')');
+    if (BY_ID[def.id]) throw new Error('register: duplicate move id ' + def.id);
+    if (!LADDERS[def.kind]) throw new Error('register: unknown kind ' + def.kind + ' (' + def.id + ')');
+    def.ups = LADDERS[def.kind];
+    def.maxLvl = def.ups.length + 1;
+    BY_ID[def.id] = def;
+    return def;
+  }
+
   G.Moves = { ALL: RAW, BY_ID, POOL, poolFor, instance, levelUp, nextUpText, startFor,
-              EVO, NEED_NAME, evoInfo, evolve };
+              EVO, NEED_NAME, evoInfo, evolve, AREA, SIG_POWER, dps, median, register };
 })();

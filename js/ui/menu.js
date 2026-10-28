@@ -405,6 +405,15 @@ G.MenuUI = (() => {
       <p class="sub mx-desc mx-locked" translate="no">${u.desc}</p>`
         : `<div class="mx-row"><span>Unique</span><b${gold} translate="no">${u.name}</b></div>`;
     }
+    const sg = ab.sig;                                       // movimiento especial de la especie: mismo trato que la unique
+    if (sg) {
+      const gold = sg.rare === 'legend' ? ' class="u5"' : '';
+      h += sg.locked
+        ? `<div class="mx-row mx-locked"><span>Signature</span><b${gold} translate="no">${sg.name}</b><small>Unlocks at 5★</small></div>
+      <p class="sub mx-desc mx-locked" translate="no">${sg.desc}</p>`
+        : `<div class="mx-row"><span>Signature</span><b${gold} translate="no">${sg.name}</b></div>
+      <p class="sub mx-desc" translate="no">${sg.desc}</p>`;
+    }
     return h;
   }
 

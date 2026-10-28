@@ -147,11 +147,14 @@ G.LevelUp = (() => {
   }
 
   /** Construye el conjunto de cartas candidatas, con pesos. */
+  /** Huecos de movimiento normales en uso (el del movimiento especial de la especie no cuenta). */
+  const normalSlots = pl => (pl.normalSlots ? pl.normalSlots() : pl.slots.length);
+
   function candidates(pl) {
     const out = [];
 
     // --- movimientos nuevos ---
-    if (pl.slots.length < pl.maxMoves) {
+    if (normalSlots(pl) < pl.maxMoves) {
       // Con 2 potenciadores ya no se ofrecen más: los buff no hacen daño y
       // llenar los 4 huecos con ellos deja la run sin salida.
       const buffs = pl.moves.filter(m => m.kind === 'buff').length;
@@ -226,7 +229,7 @@ G.LevelUp = (() => {
       // La que espera una evolución sale siempre y con aviso: sin rareza a la vista, con la fuerza de
       // una Poco común (que es la de siempre) y cuenta como una elección más.
       const c = statCard(pl, s, evoFor ? 2 : rollRarity(), eligible);
-      c.w = evoFor ? 14 : pl.slots.length < pl.maxMoves ? 4 : 7;
+      c.w = evoFor ? 14 : normalSlots(pl) < pl.maxMoves ? 4 : 7;
       if (evoFor) { c.color = '#ffd23f'; c.rcolor = null; c.tag = 'Evoluciona ' + G.T(evoFor.name, 'move'); }
       out.push(c);
     }

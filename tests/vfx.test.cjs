@@ -160,7 +160,8 @@ const MOVES_1 = ['ember', 'flamethrower', 'fire-spin', 'heat-wave', 'will-o-wisp
   'mud-shot', 'bulldoze', 'bonemerang', 'spikes', 'sand-tomb', 'magnitude',
   'rock-throw', 'rock-slide', 'rock-tomb', 'ancient-power', 'power-gem',
   'metal-claw', 'flash-cannon', 'meteor-mash', 'mirror-shot', 'gyro-ball',
-  'karate-chop', 'aura-sphere', 'rolling-kick', 'vacuum-wave', 'dynamic-punch'];
+  'karate-chop', 'aura-sphere', 'rolling-kick', 'vacuum-wave', 'dynamic-punch',
+  'bulk-up', 'iron-defense', 'rock-polish', 'ingrain', 'volt-charge'];
 shapeSuite('shapes-1', SHAPES_1, MOVES_1);
 
 const SHAPES_2 = ['poison_glob', 'poison_skull', 'poison_fang', 'fly_feather', 'fly_slash', 'fly_swirl',
@@ -176,7 +177,8 @@ const MOVES_2 = ['sludge', 'poison-sting', 'toxic', 'toxic-spikes', 'acid-spray'
   'fairy-wind', 'dazzling-gleam', 'draining-kiss', 'play-rough', 'disarming-voice',
   'confusion', 'psybeam', 'psychic', 'psycho-cut', 'extrasensory', 'mist-ball',
   'tackle', 'quick-attack', 'swords-dance', 'nasty-plot', 'agility', 'harden', 'body-slam', 'hyper-voice',
-  'substitute', 'hyper-beam', 'rapid-spin'];
+  'substitute', 'hyper-beam', 'rapid-spin',
+  'calm-mind', 'hone-claws', 'focus-energy', 'laser-focus', 'life-dew'];
 shapeSuite('shapes-2', SHAPES_2, MOVES_2);
 
 // ---------------- cobertura de los 103 movimientos ----------------
@@ -188,7 +190,7 @@ function fullWorld() {
 
 test('every move has a MOVE entry and no MOVE entry is orphaned', () => {
   const G = fullWorld();
-  assert.equal(G.Moves.ALL.length, 103);
+  assert.equal(G.Moves.ALL.length, 113);
   const ids = new Set(G.Moves.ALL.map(m => m.id));
   for (const id of ids) assert.ok(G.VFX.MOVE[id], id + ' has no MOVE entry');
   for (const id of Object.keys(G.VFX.MOVE)) assert.ok(ids.has(id), id + ' is not a move');

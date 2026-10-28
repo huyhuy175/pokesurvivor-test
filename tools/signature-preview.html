@@ -1,0 +1,73 @@
+<!doctype html>
+<!-- Vista previa de los movimientos especiales de las especies raras (solo para desarrollo; build.js no la incluye).
+     Abre este archivo desde la raíz del repo (tools/signature-preview.html). Carga los mismos datos que el juego:
+     pokedex.js, mega.js, moves.js, sigfx.js y signature-moves.js (generado por node tools/gen_signature.js). -->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Signature moves preview</title>
+<style>
+  body { background: #1b1b24; color: #e8e8f0; font: 13px/1.35 system-ui, sans-serif; margin: 0; padding: 12px 16px 60px; }
+  h1 { font-size: 18px; margin: 4px 0 8px; }
+  .bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  table { border-collapse: collapse; width: 100%; max-width: 1200px; }
+  th, td { text-align: left; padding: 3px 8px; border-bottom: 1px solid #ffffff14; vertical-align: top; }
+  th { position: sticky; top: 0; background: #1b1b24; cursor: pointer; }
+  .t { display: inline-block; padding: 0 6px; border-radius: 9px; color: #111; font-size: 11px; font-weight: 600; }
+  .legend td:nth-child(3) { color: #ffcb3d; font-weight: 600; }
+  .bar span { opacity: .7; }
+  select, input { font: inherit; }
+  .low { color: #ff9a7a; } .high { color: #7fe39a; }
+</style>
+</head>
+<body>
+<h1>Movimientos especiales (Rank 5★, hueco 5)</h1>
+<div class="bar">
+  <label>bando <select id="why"><option value="">todos</option><option>legend</option><option>mega</option><option>pseudo</option></select></label>
+  <label>tipo <select id="type"><option value="">todos</option></select></label>
+  <label>nivel del movimiento <select id="lvl"><option>1</option><option>3</option><option>5</option></select></label>
+  <label>buscar <input id="q" placeholder="nombre o dex"></label>
+  <span id="count"></span>
+</div>
+<table><thead><tr><th data-k="dex">dex</th><th data-k="species">especie</th><th data-k="name">movimiento</th><th data-k="type">tipo</th><th data-k="kind">kind</th><th data-k="fx">mecánica</th><th data-k="dmg">daño</th><th data-k="ratio">vs grupo de 4</th></tr></thead><tbody id="rows"></tbody></table>
+
+<script>
+window.G = window.G || {};
+G.U = { TYPE_COLOR: { normal: '#c4bcb0', fire: '#ff6a1f', water: '#3d8bff', grass: '#45b23c', electric: '#ffd21a', psychic: '#ff4f9a', ice: '#62d2ea',
+  fighting: '#e04a2e', poison: '#a043d0', ground: '#aa7c3c', flying: '#93b2ff', bug: '#90b82a', rock: '#8e7a5a', ghost: '#5c48aa',
+  dragon: '#5a3cff', dark: '#463840', steel: '#8c9caf', fairy: '#ff8acb' }, TYPE_NAME: {} };
+G.DEX_BY = {};
+G.I18n = { add() {}, f: s => s };
+G.EnemyMgr = { queryCircle: () => [] };
+</script>
+<script src="../js/data/pokedex.js"></script>
+<script src="../js/data/mega.js"></script>
+<script src="../js/data/moves.js"></script>
+<script src="../js/data/sigfx.js"></script>
+<script src="../js/data/signature-moves.js"></script>
+<script>
+const $ = id => document.getElementById(id), M = G.Moves;
+let sortK = 'dex', dir = 1;
+const rows = () => {
+  const lvl = +$('lvl').value, group = 4 * M.median(lvl);
+  return Object.entries(G.SIG).map(([dex, d]) => ({
+    dex: +dex, species: G.DEX_BY[dex].name, name: d.name, type: d.type, kind: d.kind, why: d.rare, fx: d.sig.fx, v: d.sig.v, dmg: d.dmg,
+    text: G.SigFX.FX[d.sig.fx].text(d.sig.v), ratio: M.dps(d, lvl) * G.SigFX.POWER[d.sig.fx](d.sig.v) / group
+  }));
+};
+function render() {
+  const w = $('why').value, t = $('type').value, q = $('q').value.trim().toLowerCase();
+  let list = rows().filter(r => (!w || r.why === w) && (!t || r.type === t) && (!q || r.name.toLowerCase().includes(q) || r.species.toLowerCase().includes(q) || String(r.dex) === q));
+  list.sort((a, b) => (a[sortK] > b[sortK] ? 1 : a[sortK] < b[sortK] ? -1 : 0) * dir);
+  $('rows').innerHTML = list.map(r => `<tr class="${r.why}"><td>${r.dex}</td><td>${r.species}</td><td>${r.name}</td>
+    <td><span class="t" style="background:${G.U.TYPE_COLOR[r.type]}">${r.type}</span></td><td>${r.kind}</td><td title="${r.text}">${r.fx} ${r.v}</td>
+    <td>${r.dmg}</td><td class="${r.ratio < 0.8 ? 'low' : r.ratio > 1.3 ? 'high' : ''}">${r.ratio.toFixed(2)}</td></tr>`).join('');
+  $('count').textContent = list.length + ' movimientos';
+}
+for (const t of Object.keys(G.U.TYPE_COLOR)) $('type').add(new Option(t, t));
+document.querySelectorAll('th').forEach(th => th.onclick = () => { const k = th.dataset.k; dir = k === sortK ? -dir : 1; sortK = k; render(); });
+['why', 'type', 'lvl', 'q'].forEach(id => $(id).oninput = render);
+render();
+</script>
+</body>
+</html>

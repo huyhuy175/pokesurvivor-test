@@ -35,8 +35,9 @@ G.Combat = (() => {
       return;
     }
     // (Bromista: los potenciadores se recargan antes, ver data/ability-fx.js.)
-    m.t = Math.max(0.05, m.cd * pl.cdMul * (m.kind === 'buff' && pl.abil && pl.abil.statusCd || 1));
+    m.t = Math.max(0.05, m.cd * pl.cdNow() * (m.kind === 'buff' && pl.abil && pl.abil.statusCd || 1));
     pl.cast(m);
+    if (m.sig && G.SigFX) G.SigFX.onCast(pl, m);
     if (G.Coop.active) G.Coop.cast(pl, m);
     // Vínculo: su icono destella en el HUD al lanzarse (uno que explota pegado al
     // enemigo, como Ascuas tras Ataque Rápido, casi no se ve).
@@ -731,7 +732,7 @@ G.Combat = (() => {
 
   // Golpe crítico (Mejoras → Golpe Crítico): x1,5 de daño, número naranja y grande.
   const CRIT_MUL = 1.5;
-  const isCrit = pl => !ghost && pl.critChance > 0 && Math.random() < pl.critChance;
+  const isCrit = pl => !ghost && pl.critNow() > 0 && Math.random() < pl.critNow();
 
   // Habilidad de quien pega (data/ability-fx.js): × al daño, crítico, estados y
   // lo que hace al golpear. (Los compañeros no la llevan aquí: pegan en su ordenador.)
@@ -741,7 +742,8 @@ G.Combat = (() => {
   const statK = (pl, e) => (pl.statDmgK ? pl.statDmgK(e) : 1);
   /** × a quemaduras, venenos, frenazos y empujones: Potencia Bruta los quita, Dicha los dobla. */
   const statusK = pl => (!pl.abil ? 1 : pl.abil.sheer ? 0 : pl.abil.serene ? 2 : 1);
-  function afterHit(pl, e, m) {
+  function afterHit(pl, e, m, dmg) {
+    if (m && m.sig && !ghost && !e.dead && G.SigFX) G.SigFX.onHit(pl, e, m, dmg);      // movimiento especial de la especie
     const a = pl.abil;
     if (!a || e.dead) return;
     if (a.hit) a.hit(pl, e, m);
@@ -763,7 +765,7 @@ G.Combat = (() => {
     if (m.burn && sk) e.applyBurn(m.burn * sk);
     if (m.poison && sk) e.applyPoison(m.poison * sk);
     if (m.slow && sk) e.applySlow(Math.min(0.8, m.slow * sk));
-    afterHit(pl, e, m);
+    afterHit(pl, e, m, dmg);
   }
 
   // ---------------- colisiones ----------------
@@ -876,7 +878,7 @@ G.Combat = (() => {
         if (p.poison && sk) e.applyPoison(p.poison * sk);
         if (p.slow && sk) e.applySlow(Math.min(0.8, p.slow * sk));
         if (p.drain) pl.heal(p.drain);                    // Beso Drenaje
-        afterHit(pl, e, p.src);
+        afterHit(pl, e, p.src, p.dmg * k);
 
         if (!p.orb && rebound(p, e)) break;
         if (!p.orb) {

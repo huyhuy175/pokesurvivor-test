@@ -27,3 +27,23 @@ test('stronger rarities are worth more, up to the Legendary', () => {
   assert.ok(SINGLE_K[1] < SINGLE_K[2] && SINGLE_K[2] < SINGLE_K[3]);
   for (const n of [2, 3]) assert.ok(BUNDLE_K[4][n] * n > SINGLE_K[3] && BUNDLE_K[5][n] > BUNDLE_K[4][n]);
 });
+
+// ---------------- move đặc trưng vs nhóm 4 move ghép ----------------
+// Potencia nominal (Moves.dps) de cada movimiento especial frente a un grupo de cuatro movimientos normales del mismo nivel
+// (4 × la mediana). Es una medida interna, no un DPS real: tras jugar hay que revisar SIG_POWER (js/data/moves.js).
+// La dispersión por kind en los niveles altos viene de que cada kind tiene su propia escalera de mejoras frente a una
+// mediana global; frente a un movimiento normal del MISMO kind y nivel, el especial vale siempre SIG_POWER / POWER(fx).
+test('a signature move is worth about one fused group of four regular moves, at any move level', () => {
+  const fs2 = require('node:fs');
+  const G = { DEX_BY: {}, U: { TYPE_COLOR: {}, TYPE_NAME: {} }, I18n: { add() {}, f: s => s }, EnemyMgr: { queryCircle: () => [] } };
+  for (const f of ['js/data/pokedex.js', 'js/data/mega.js', 'js/data/moves.js', 'js/data/sigfx.js', 'js/data/signature-moves.js']) {
+    new Function('G', fs2.readFileSync(require('node:path').join(__dirname, '..', f), 'utf8'))(G);
+  }
+  const M = G.Moves;
+  const ratios = lvl => Object.values(G.SIG).map(d => M.dps(d, lvl) * G.SigFX.POWER[d.sig.fx](d.sig.v) / (4 * M.median(lvl)));
+  const stats = lvl => { const r = ratios(lvl); return { min: Math.min(...r), max: Math.max(...r), mean: r.reduce((a, b) => a + b, 0) / r.length }; };
+  const l1 = stats(1), l3 = stats(3), l5 = stats(5);
+  assert.ok(l1.min >= 0.95 && l1.max <= 1.05, `level 1: ${JSON.stringify(l1)}`);
+  assert.ok(l3.min >= 0.7 && l3.max <= 2.0 && l3.mean >= 0.9 && l3.mean <= 1.2, `level 3: ${JSON.stringify(l3)}`);
+  assert.ok(l5.min >= 0.6 && l5.max <= 2.8 && l5.mean >= 0.9 && l5.mean <= 1.25, `level 5: ${JSON.stringify(l5)}`);
+});

@@ -317,7 +317,7 @@ G.Icons = (() => {
   }
 
   /** Emblema circular de un tipo (16×16), con insignia de familia opcional. */
-  function emblem(type, kind) {
+  function emblem(type, kind, star = false) {
     const S = 16;
     const cv = document.createElement('canvas');
     cv.width = cv.height = S;
@@ -347,6 +347,11 @@ G.Icons = (() => {
       c.fillStyle = '#ffd23f';
       KIND_GLYPH[kind].forEach((row, y) => [...row].forEach((ch, x) => { if (ch === '#') c.fillRect(x + 10, y + 10, 1, 1); }));
     }
+    if (star) {                                    // movimiento especial de la especie: estrellita dorada arriba a la derecha
+      c.fillStyle = K; c.fillRect(11, 0, 5, 5); c.fillRect(10, 1, 7, 3);
+      c.fillStyle = '#ffd23f'; c.fillRect(13, 0, 1, 5); c.fillRect(11, 2, 5, 1);
+      c.fillStyle = '#fff3a0'; c.fillRect(13, 2, 1, 1);
+    }
     return cv;
   }
 
@@ -355,7 +360,7 @@ G.Icons = (() => {
     if (cv) return cv;
     if (name.startsWith('move:')) {
       const m = G.Moves.BY_ID[name.slice(5)];
-      cv = emblem(m ? m.type : 'normal', m ? m.kind : null);
+      cv = emblem(m ? m.type : 'normal', m ? m.kind : null, !!(m && m.rare));
     } else if (name.startsWith('type:')) {
       cv = emblem(name.slice(5));
     } else {

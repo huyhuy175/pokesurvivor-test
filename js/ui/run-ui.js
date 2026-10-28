@@ -204,8 +204,9 @@ G.RunUI = (() => {
   function renderBond() {
     const { opt, first } = bond;
     const names = ms => ms.map(m => G.T(m.name, 'move')).join(' + ');
+    const single = o => o.mode === 'add' || o.mode === 'sig';       // 'sig': un potenciador para el movimiento especial
     const step2 = opt.mode === 'pair' && first;
-    $('bond-sub').textContent = opt.mode === 'add' ? 'Elige qué movimiento se une a ' + names(opt.group)
+    $('bond-sub').textContent = single(opt) ? 'Elige qué movimiento se une a ' + names(opt.group)
       : step2 ? '¿Con cuál unes ' + G.T(first.name, 'move') + '?' : 'Elige el primer movimiento que vas a unir';
     $('bond-back').classList.toggle('hidden', !step2);
     bond.list = step2 ? opt.loose.filter(m => m !== first) : opt.loose;
@@ -213,11 +214,11 @@ G.RunUI = (() => {
     box.innerHTML = '';
     bond.list.forEach((m, i) => {
       const col = G.U.TYPE_COLOR[m.type];
-      const desc = opt.mode === 'add' ? 'Se lanzará a la vez que ' + names(opt.group) + '.'
+      const desc = single(opt) ? 'Se lanzará a la vez que ' + names(opt.group) + '.'
         : step2 ? 'Se lanzará a la vez que ' + G.T(first.name, 'move') + '. Queda un hueco libre.'
         : m.desc || '';
       const el = document.createElement('div');
-      el.className = 'card' + (opt.mode === 'add' || step2 ? ' bond' : '');
+      el.className = 'card' + (single(opt) || step2 ? ' bond' : '');
       el.innerHTML =
         `<div class="ico" style="background:${col}33">${G.Icons.html('move:' + m.id, 32)}</div>
          <div class="txt"><div class="nm">${G.T(m.name, 'move')} <span class="tag-chip" style="background:${col}">Nv.${m.lvl}</span></div><div class="ds">${desc}</div></div>
@@ -230,6 +231,7 @@ G.RunUI = (() => {
 
   function pickBond(i) {
     if (!bond || !bond.list[i] || guarded()) return;
+    const single = o => o.mode === 'add' || o.mode === 'sig';
     const m = bond.list[i];
     if (bond.opt.mode === 'pair' && !bond.first) {
       bond.first = m;
@@ -237,7 +239,7 @@ G.RunUI = (() => {
       renderBond();
       return;
     }
-    const picked = bond.opt.mode === 'add' ? [m] : [bond.first, m];
+    const picked = single(bond.opt) ? [m] : [bond.first, m];
     const cb = bond.cb;
     bond = null;
     G.UI.hide('scr-bond');
@@ -278,13 +280,13 @@ G.RunUI = (() => {
       ['Defensa', mon.df + ' <small>' + guard(fis) + ' físico</small>'],
       ['Def. Esp.', mon.sd + ' <small>' + guard(esp) + ' especial</small>'],
       ['Velocidad', n(pl.spd)],
-      ['Crítico', pct(pl.critChance || 0)],
+      ['Crítico', pct(pl.critNow())],
       ['Daño crítico', k2(pl.critFactor())],
       ['Esquiva', pct(pl.dodgeChance || 0)],
       ['Reducción de daño', pct(pl.reduction)],
       ['Daño a jefes', k2(pl.bossDmg || 1)],
       ['Daño a débiles', k2(pl.executeDmg || 1)],
-      ['Recarga', pl.cdMul < 0.995 ? '−' + pct(1 - pl.cdMul) : '0 %'],
+      ['Recarga', pl.cdNow() < 0.995 ? '−' + pct(1 - pl.cdNow()) : '0 %'],
       ['Regeneración', pl.regen.toFixed(1).replace('.', ',') + ' /s'],
       ['Curación', k2(pl.healMul || 1)],
       ['Imán', k2(pl.magnet / 78)],

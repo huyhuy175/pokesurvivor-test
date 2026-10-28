@@ -149,6 +149,7 @@ G.Game = (() => {
       else if (pool.length) pl.addMove(G.U.pick(pool));
       pl.setActive(0);
     }
+    pl.syncSignature();                       // movimiento especial de la especie, si el Rank llega a 5★
 
     if (coop) {
       G.Coop.begin(coop, pl, coopApi);
@@ -441,10 +442,12 @@ G.Game = (() => {
     G.Audio.sfx('levelup');
     G.RunUI.showBond(opt, picked => {
       const group = pl.fuse(picked, opt.group);
-      G.Audio.sfx('legend');
-      G.FX.ring(pl.x, pl.y, 8, 130, '#ff8ad8', 0.8, 6);
-      G.FX.burst(pl.x, pl.y - pl.bodyH * 0.5, '#ffb3e6', 40, 240);
-      G.Spawner.say('¡Vínculo! ' + group.length + ' movimientos a la vez', 2.6, true);
+      if (group) {                                  // (null: no encajaba, no se gastó el vínculo)
+        G.Audio.sfx('legend');
+        G.FX.ring(pl.x, pl.y, 8, 130, '#ff8ad8', 0.8, 6);
+        G.FX.burst(pl.x, pl.y - pl.bodyH * 0.5, '#ffb3e6', 40, 240);
+        G.Spawner.say('¡Vínculo! ' + group.length + ' movimientos a la vez', 2.6, true);
+      }
       if (state === 'choice') state = holdBy.length ? 'held' : 'playing';
       if (G.Coop.active) G.Coop.holdEnd();
     });
@@ -607,6 +610,8 @@ G.Game = (() => {
     for (let i = 0; i < 4; i++) {
       if (G.Input.tap('digit' + (i + 1)) || G.Input.tap('numpad' + (i + 1))) pl.setActive(i);
     }
+    // El movimiento especial de la especie tiene su propia tecla (5-8 son las esferas).
+    if (G.Input.tap('digit0') || G.Input.tap('numpad0')) pl.selectSig();
     // Caído en grupo: Q / E cambian a quién miras.
     if (pl.dead) { if (G.Input.tap('keyq')) cycleWatch(-1); if (G.Input.tap('keye') || G.Input.tap('tab')) cycleWatch(1); return; }
     if (G.Input.tap('keyq')) pl.cycle(-1);

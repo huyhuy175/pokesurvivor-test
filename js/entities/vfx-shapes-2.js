@@ -337,6 +337,14 @@
     'hyper-voice':   { proj: 'note' },
     'substitute':    { proj: 'norm_swirl' },
     'hyper-beam':    { beam: 'star', proj: 'norm_star', hit: 'shock' },
-    'rapid-spin':    { melee: 'impact', proj: 'norm_swirl' }
+    'rapid-spin':    { melee: 'impact', proj: 'norm_swirl' },
+    // potenciadores (28-10-2026)
+    'calm-mind':     { buff: 'psy_orb' },
+    'hone-claws':    { buff: 'dark_orb' },
+    'focus-energy':  { buff: 'bug_wing' },
+    'laser-focus':   { buff: 'ghost_flame' },
+    'life-dew':      { buff: 'fairy_sparkle' }
   });
+  // Aspecto de los movimientos especiales de cada especie (generado en js/data/signature-moves.js).
+  if (G.SIG_VFX) G.VFX.addMoves(G.SIG_VFX);
 })();

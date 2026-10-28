@@ -284,18 +284,19 @@ G.HUD = (() => {
     // (layout-ui.js); los ataques nuevos van saliendo hacia la derecha.
     const pb = touch && G.Touch.spot('bar');
     if (pb) {
-      const nAll = Math.max(n, pl.maxMoves), bw = S + 18 + nAll * S + (nAll - 1) * GAP;
+      const nAll = Math.max(n, pl.maxMoves + (pl.sig ? 1 : 0)), bw = S + 18 + nAll * S + (nAll - 1) * GAP;
       sx = G.U.clamp(pb[0] * w - bw / 2, 6, Math.max(6, w - bw - 6)) + S + 18;
       sy = G.U.clamp(pb[1] * h - S / 2, 24, h - S - 6);
     }
     const BOND = '#ff8ad8';
-    const cdOf = m => m.kind === 'orbit' ? 0 : G.U.clamp(m.t / (m.cd * pl.cdMul), 0, 1);
+    const cdOf = m => m.kind === 'orbit' ? 0 : G.U.clamp(m.t / (m.cd * pl.cdNow()), 0, 1);
 
     for (let i = 0; i < n; i++) {
       const g = pl.slots[i] || [];
       const m = g[0];
       const fused = g.length > 1;
       const on = i === pl.active;
+      const special = pl.isSigSlot(i);          // movimiento especial de la especie: borde dorado
       const x = sx + i * (S + GAP);
       const y = on ? sy - 6 : sy;
       // Tocar (o hacer clic en) un icono activa ese movimiento.
@@ -306,9 +307,9 @@ G.HUD = (() => {
       roundRect(ctx, x, y, S, S, 12);
       ctx.fillStyle = on ? 'rgba(20,30,50,.95)' : 'rgba(10,16,28,.8)';
       ctx.fill();
-      ctx.lineWidth = on ? 2.5 : fused || (m && m.evolved) ? 2 : 1.2;
-      // Vínculo: borde rosa. Evolucionado: dorado.
-      ctx.strokeStyle = fused ? BOND : m && m.evolved ? '#ffd23f' : on ? col : 'rgba(140,170,210,.22)';
+      ctx.lineWidth = on ? 2.5 : fused || special || (m && m.evolved) ? 2 : 1.2;
+      // Especial: borde dorado. Vínculo: rosa. Evolucionado: dorado.
+      ctx.strokeStyle = special ? '#ffcb3d' : fused ? BOND : m && m.evolved ? '#ffd23f' : on ? col : 'rgba(140,170,210,.22)';
       ctx.stroke();
 
       if (!m) continue;
@@ -354,7 +355,7 @@ G.HUD = (() => {
       ctx.font = F(800, 9);
       ctx.fillStyle = fused ? BOND : on ? col : 'rgba(180,200,230,.6)';
       ctx.textAlign = 'left';
-      ctx.fillText(String(i + 1), x + 3, y + 10);
+      ctx.fillText(special ? '0' : String(i + 1), x + 3, y + 10);
 
       // nombre encima del activo (con un vínculo: "Ascuas +2")
       if (on) {

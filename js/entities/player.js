@@ -38,6 +38,8 @@ G.Player = class Player {
     this.moves = [];           // todos los movimientos aprendidos
     this.slots = [];           // huecos: cada uno, una lista de movimientos que se lanzan a la vez
     this.active = 0;           // hueco activo
+    this.sig = null;           // movimiento especial de su especie (Rank 5★): va en el último hueco, aparte de los maxMoves
+    this.sigLvl = 1;           // su nivel, para recuperarlo si cambia de especie y vuelve a tener uno
     this.maxMoves = 4;         // huecos
     this.bonds = 0;            // vínculos por usar (premio de los legendarios)
 
@@ -48,8 +50,15 @@ G.Player = class Player {
       satk: { n: 0, t: 0, amount: 0 },
       spd: { n: 0, t: 0, amount: 0 },
       def: { n: 0, t: 0, amount: 0 },
-      regen: { n: 0, t: 0, amount: 0 }
+      regen: { n: 0, t: 0, amount: 0 },
+      // 28-10-2026: crit = +% de probabilidad crítica, critdmg = +multiplicador del crítico,
+      // hp = +% de vida máxima (ver syncHpBuff), haste = +% de velocidad de ataque (ver cdNow).
+      crit: { n: 0, t: 0, amount: 0 },
+      critdmg: { n: 0, t: 0, amount: 0 },
+      hp: { n: 0, t: 0, amount: 0 },
+      haste: { n: 0, t: 0, amount: 0 }
     };
+    this.hpBuff = 0;           // vida máxima que ahora mismo da el potenciador de vida
 
     this.level = 1;
     this.xp = 0;
@@ -139,6 +148,7 @@ G.Player = class Player {
     this.maxHp = Math.max(1, this.maxHp + hpDiff);
     this.setAbility();
     this.hp = this.dead ? 0 : Math.min(this.maxHp, Math.max(1, ratio * this.maxHp));
+    this.syncSignature();
     if (G.Coop && G.Coop.active && !this.remote) G.Coop.evolved(this.dex);     // los compañeros ven tu nuevo aspecto
   }
 
@@ -230,12 +240,13 @@ G.Player = class Player {
 
   // ---------------- movimientos ----------------
   addMove(id) {
-    if (this.slots.length >= this.maxMoves || this.hasMove(id)) return false;
+    if (this.normalSlots() >= this.maxMoves || this.hasMove(id)) return false;
     const m = G.Moves.instance(id, 1);
     m.since = G.Game.st.time;          // desde cuándo lo tienes (daño por segundo en el resumen)
     this.moves.push(m);
     const group = [m];
     this.slots.push(group);
+    this.keepSigLast();
     this.arrange();
     // Te quedas con el que llevabas (18-10-2026: antes se cambiaba solo al nuevo
     // y te quitaba el ataque que estabas usando). Sólo si no tenías ninguno, el nuevo.
@@ -250,21 +261,95 @@ G.Player = class Player {
    * rellenan los huecos libres en el orden en que los aprendiste.
    */
   arrange() {
-    const n = this.slots.length;
-    if (n < 2 || !this.bind) return;
+    const sigG = this.sigGroup(), list = sigG ? this.slots.filter(g => g !== sigG) : this.slots;   // el hueco especial no se recoloca
+    const n = list.length;
+    if (n < 2 || !this.bind) { this.keepSigLast(); return; }
     const want = g => { let k = Infinity; for (const m of g) if (this.bind[m.id] != null) k = Math.min(k, this.bind[m.id]); return k; };
     const cur = this.slots[this.active];
     const out = new Array(n).fill(null);
-    const bound = this.slots.filter(g => want(g) < Infinity).sort((a, b) => want(a) - want(b));
+    const bound = list.filter(g => want(g) < Infinity).sort((a, b) => want(a) - want(b));
     for (const g of bound) {
       let p = Math.min(want(g), n - 1);
       while (p >= 0 && out[p]) p--;                          // ocupado: el de antes
       if (p < 0) { p = 0; while (out[p]) p++; }              // o el primero libre
       out[p] = g;
     }
-    for (const g of this.slots) if (!out.includes(g)) out[out.indexOf(null)] = g;
-    this.slots = out;
-    if (cur) this.active = out.indexOf(cur);
+    for (const g of list) if (!out.includes(g)) out[out.indexOf(null)] = g;
+    this.slots = sigG ? [...out, sigG] : out;
+    if (cur) this.active = this.slots.indexOf(cur);
+  }
+
+  // ---------------- movimiento especial de la especie (28-10-2026) ----------------
+  /** Hueco (grupo) del movimiento especial, o null. */
+  sigGroup() { return this.sig ? this.slots.find(g => g.includes(this.sig)) || null : null; }
+
+  /** Huecos normales en uso (sin el del movimiento especial): son los que cuentan para maxMoves. */
+  normalSlots() { return this.slots.length - (this.sigGroup() ? 1 : 0); }
+
+  /** Pasa al hueco del movimiento especial (tecla 0). */
+  selectSig() {
+    const i = this.slots.findIndex(g => this.sig && g.includes(this.sig));
+    if (i >= 0) this.setActive(i);
+  }
+
+  isSigSlot(i) { return !!this.sig && !!this.slots[i] && this.slots[i].includes(this.sig); }
+
+  /** El hueco especial va siempre el último y no cuenta como uno de los maxMoves. */
+  keepSigLast() {
+    const g = this.sigGroup(), cur = this.slots[this.active];
+    if (!g || this.slots[this.slots.length - 1] === g) return;
+    this.slots.splice(this.slots.indexOf(g), 1);
+    this.slots.push(g);
+    if (cur) this.active = this.slots.indexOf(cur);
+  }
+
+  /**
+   * Pone o quita el movimiento especial según la especie de ahora (G.SIG_OF) y el Rank de su línea (5★).
+   * Se llama al empezar la partida y tras cada evolución (también Mega). Idempotente; conserva el nivel si
+   * cambia de un movimiento especial a otro. Los compañeros remotos no lo tienen (su ataque llega por la red).
+   */
+  syncSignature() {
+    if (this.remote) return;
+    const want = G.SIG_OF && G.Rank && G.Rank.starsOf(this.dex) >= 5 ? G.SIG_OF(this.dex) : null;
+    if (this.sig && want && this.sig.id === want.id) return;
+    if (this.sig && want) { this.swapSig(want); return; }
+    if (this.sig) this.removeSig();
+    if (!want) return;
+    const m = G.Moves.instance(want.id, this.sigLvl || 1);
+    m.since = G.Game && G.Game.st ? G.Game.st.time : 0;
+    const cur = this.slots[this.active];
+    this.moves.push(m);
+    this.sig = m;
+    this.slots.push([m]);
+    this.active = cur ? this.slots.indexOf(cur) : this.slots.length - 1;
+  }
+
+  /** De una especie con movimiento especial a otra: se cambia dentro de su grupo (con los potenciadores fusionados y el nivel). */
+  swapSig(want) {
+    const old = this.sig, g = this.sigGroup();
+    this.sigLvl = old.lvl;
+    const m = G.Moves.instance(want.id, old.lvl);
+    m.since = old.since;
+    this.moves[this.moves.indexOf(old)] = m;
+    if (g) g[g.indexOf(old)] = m;
+    this.sig = m;
+  }
+
+  /** Quita el movimiento especial; los potenciadores fusionados con él vuelven a ser huecos sueltos si caben. */
+  removeSig() {
+    const m = this.sig, g = this.sigGroup(), cur = this.slots[this.active];
+    this.sigLvl = m.lvl;
+    this.moves = this.moves.filter(x => x !== m);
+    this.sig = null;
+    if (g) {
+      this.slots = this.slots.filter(x => x !== g);
+      for (const b of g) {
+        if (b === m) continue;
+        if (this.slots.length < this.maxMoves) this.slots.push([b]);
+        else this.moves = this.moves.filter(x => x !== b);
+      }
+    }
+    this.active = cur && this.slots.includes(cur) ? this.slots.indexOf(cur) : 0;
   }
 
   hasMove(id) { return this.moves.some(m => m.id === id); }
@@ -294,17 +379,30 @@ G.Player = class Player {
   // solo hueco y se lanzan a la vez. Sólo crece un grupo (hasta BOND_MAX); si
   // no hay ninguno a medias, el vínculo une dos movimientos sueltos.
   static get BOND_MAX() { return 4; }
+  // El movimiento especial de la especie (hueco 5) se fusiona sólo con potenciadores, hasta SIG_BUFFS; nunca con otro ataque.
+  static get SIG_BUFFS() { return 2; }
 
-  /** Lo que se puede hacer ahora con un vínculo: añadir a un grupo o unir dos sueltos. */
+  /**
+   * Lo que se puede hacer ahora con un vínculo: sumar un potenciador al movimiento especial (mientras le quepan),
+   * añadir a un grupo o unir dos sueltos.
+   */
   bondOptions() {
-    const loose = this.slots.filter(s => s.length === 1).map(s => s[0]);
-    const grow = this.slots.find(s => s.length > 1 && s.length < Player.BOND_MAX);
+    const sigG = this.sigGroup(), plain = this.slots.filter(s => s !== sigG);
+    const loose = plain.filter(s => s.length === 1).map(s => s[0]);
+    const buffs = loose.filter(m => m.kind === 'buff');
+    if (sigG && sigG.length - 1 < Player.SIG_BUFFS && buffs.length) return { mode: 'sig', group: sigG, loose: buffs };
+    const grow = plain.find(s => s.length > 1 && s.length < Player.BOND_MAX);
     if (grow) return loose.length ? { mode: 'add', group: grow, loose } : null;
     return loose.length >= 2 ? { mode: 'pair', group: null, loose } : null;
   }
 
   /** Junta `moves` (sueltos) en el grupo `group` (o en uno nuevo) y gasta un vínculo. */
   fuse(moves, group = null) {
+    const sigG = this.sigGroup();
+    if (group && group === sigG) {
+      // Al especial sólo se le suman potenciadores, hasta SIG_BUFFS; si no encaja no se gasta el vínculo.
+      if (!moves.length || !moves.every(m => m.kind === 'buff' && !group.includes(m)) || group.length - 1 + moves.length > Player.SIG_BUFFS) return null;
+    } else if (sigG && moves.includes(this.sig)) return null;
     const target = group || this.slots.find(s => s[0] === moves[0]);
     const cur = this.slots[this.active];
     for (const m of moves) {
@@ -349,7 +447,7 @@ G.Player = class Player {
     if (this.anim.busy() && this.anim.progress() < 0.65) return;
     const meta = G.Sprites.animMeta(this.dex, anim);
     const len = meta ? meta.d.reduce((a, b) => a + b, 0) / 60 : 0.4;
-    const cd = Math.max(0.12, m.cd * this.cdMul);
+    const cd = Math.max(0.12, m.cd * this.cdNow());
     this.anim.play(anim, { speed: Math.max(1, len / (cd * 0.9)) });
     this.attackFace = 0.35;
   }
@@ -361,7 +459,13 @@ G.Player = class Player {
    */
   /** @param cat  'physical' | 'special': con qué defensa tuya se para (la del enemigo que pega). */
   /** Multiplicador del golpe crítico: el de la pasiva (o x1,5) más lo de las cartas. */
-  critFactor() { return ((this.abil && this.abil.critMul) || 1.5) + this.critDmgBonus; }
+  critFactor() { return ((this.abil && this.abil.critMul) || 1.5) + this.critDmgBonus + this.buffs.critdmg.n * this.buffs.critdmg.amount; }
+
+  /** Probabilidad de crítico ahora: la fija (Mejoras, cartas, pasiva) más el potenciador. */
+  critNow() { return this.critChance + this.buffs.crit.n * this.buffs.crit.amount; }
+
+  /** Multiplicador de recarga ahora: cdMul entre (1 + velocidad de ataque del potenciador). */
+  cdNow() { return this.cdMul / (1 + this.buffs.haste.n * this.buffs.haste.amount); }
 
   /** × al daño que le haces a `e` por las cartas (jefes y enemigos casi vencidos). */
   statDmgK(e) {
@@ -489,6 +593,35 @@ G.Player = class Player {
     b.amount = amount;
     b.n = Math.min(maxStacks, b.n + 1);
     b.t = dur;
+    if (stat === 'hp') this.syncHpBuff();
+  }
+
+  /** Cuenta atrás de los potenciadores; al acabar uno de vida devuelve el máximo. */
+  tickBuffs(dt) {
+    for (const k in this.buffs) {
+      const b = this.buffs[k];
+      if (b.n > 0) {
+        b.t -= dt;
+        if (b.t <= 0) { b.n = 0; if (k === 'hp') this.syncHpBuff(); }
+      }
+    }
+  }
+
+  /**
+   * Pone la vida máxima al valor que toca por el potenciador. Se calcula sobre el máximo SIN el
+   * potenciador (maxHp - hpBuff), así que las acumulaciones no se componen y lo que cambie la vida
+   * máxima mientras dura (cartas de Vigor, pasivas) se conserva. Al subir, la vida nueva es
+   * utilizable; al bajar, la vida actual se recorta al nuevo máximo (nunca mata).
+   */
+  syncHpBuff() {
+    if (this.remote) return;                  // la vida de un compañero la manda la red cada fotograma
+    const b = this.buffs.hp;
+    const want = Math.round((this.maxHp - this.hpBuff) * b.n * b.amount);
+    const delta = want - this.hpBuff;
+    this.hpBuff = want;
+    this.maxHp += delta;
+    if (delta > 0 && !this.dead) this.hp += delta;
+    this.hp = Math.min(this.hp, this.maxHp);
   }
 
   // ---------------- ciclo ----------------
@@ -499,10 +632,7 @@ G.Player = class Player {
     if (this.flash > 0) this.flash -= dt;
     if (this.attackFace > 0) this.attackFace -= dt;
 
-    for (const k in this.buffs) {
-      const b = this.buffs[k];
-      if (b.n > 0) { b.t -= dt; if (b.t <= 0) b.n = 0; }
-    }
+    this.tickBuffs(dt);
     if (this.slowT > 0) this.slowT -= dt;
     if (this.bellHeal > 0) { const h = Math.min(this.bellHeal, 4 * dt); this.hp = Math.min(this.maxHp, this.hp + h); this.bellHeal -= h; }
     if (this.power && (this.power.t -= dt) <= 0) { this.power.def.off(this); this.power = null; }
@@ -685,7 +815,7 @@ G.Player = class Player {
     this.anim.draw(ctx, this.x, this.y, { flash: this.flash > 0, softFlash: true, alpha, color: '#ffcb3d' });
 
     // Arcos de buff alrededor de los pies.
-    const COL = { atk: '#ff6b4d', patk: '#ff6b4d', satk: '#c47bff', spd: '#7fe0ff', def: '#b0b8c8', regen: '#5fe08a' };
+    const COL = { atk: '#ff6b4d', patk: '#ff6b4d', satk: '#c47bff', spd: '#7fe0ff', def: '#b0b8c8', regen: '#5fe08a', crit: '#ffd23f', critdmg: '#ff9a3c', hp: '#ff8ab4', haste: '#ffe14d' };
     let i = 0;
     for (const k in this.buffs) {
       const b = this.buffs[k];

@@ -1117,3 +1117,15 @@ G.I18n.add({
   'ya no está en el top 50': 'no longer in the top 50', 'sólo': 'only', 'No se pudo: {x}': 'Failed: {x}',
   'Pasiva': 'Passive', 'Hoy': 'Today', 'Semana': 'Week', 'Mes': 'Month'
 }, 'en');
+
+// Potenciadores nuevos (28-10-2026).
+G.I18n.add({
+  'Corpulencia': 'Bulk Up', 'Paz Mental': 'Calm Mind', 'Defensa Férrea': 'Iron Defense', 'Pulido Roca': 'Rock Polish',
+  'Arraigo': 'Ingrain', 'Afilagarras': 'Hone Claws', 'Foco Energía': 'Focus Energy', 'Enfoque Láser': 'Laser Focus',
+  'Rocío Vital': 'Life Dew', 'Carga Voltio': 'Volt Charge',
+  'No hace daño: acumula ATAQUE (físico y especial) mientras esté activo.': 'Deals no damage: builds ATTACK (physical and special) while active.',
+  'No hace daño: acumula PROBABILIDAD DE CRÍTICO mientras esté activo.': 'Deals no damage: builds CRITICAL HIT CHANCE while active.',
+  'No hace daño: acumula DAÑO CRÍTICO mientras esté activo.': 'Deals no damage: builds CRITICAL DAMAGE while active.',
+  'No hace daño: acumula VIDA MÁXIMA mientras esté activo.': 'Deals no damage: builds MAX HEALTH while active.',
+  'No hace daño: acumula VELOCIDAD DE ATAQUE mientras esté activo.': 'Deals no damage: builds ATTACK SPEED while active.'
+});

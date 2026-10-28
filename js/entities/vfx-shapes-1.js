@@ -369,6 +369,12 @@
     'aura-sphere':   { proj: 'ball', pal: 'aura', trail: 'spark' },
     'rolling-kick':  { melee: 'fight_fist' },
     'vacuum-wave':   { proj: 'fight_wave', pal: 'aura' },
-    'dynamic-punch': { proj: 'fight_shock' }
+    'dynamic-punch': { proj: 'fight_shock' },
+    // potenciadores (28-10-2026)
+    'bulk-up':       { buff: 'fight_shock' },
+    'iron-defense':  { buff: 'steel_gear' },
+    'rock-polish':   { buff: 'rock_chip' },
+    'ingrain':       { buff: 'grass_seed' },
+    'volt-charge':   { buff: 'elec_orb' }
   });
 })();

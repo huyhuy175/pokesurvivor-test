@@ -300,7 +300,7 @@ test('old save with pabil and capsule counts is ignored', () => {
 test('abilityOf shows the unique, locked below 3 stars', () => {
   const G = engine({ dupes: { 1: 2 } }), u = G.PASSIVES_UNIQUE[1];
   const a = G.Mons.abilityOf(2);
-  assert.deepEqual(Object.keys(a).sort(), ['desc', 'id', 'name', 'slot', 'unique']);
+  assert.deepEqual(Object.keys(a).sort(), ['desc', 'id', 'name', 'sig', 'slot', 'unique']);
   assert.equal(a.id, '2');
   assert.equal(a.unique.name, u.n);
   assert.equal(a.unique.desc, dText(G, u, G.DEX_BY[2]));

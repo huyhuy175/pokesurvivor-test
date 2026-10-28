@@ -55,6 +55,7 @@ Vista animada: abrir `tools/vfx-preview.html`.
 | seed-bomb | bounce | `grass_seed` |  |  |  |  | `leaf` |  |
 | energy-ball | homing | `ball` |  |  |  | `spark` | `leaf` |  |
 | solar-beam | charge | `grass_thorn` | `star` |  |  |  | `blaze` |  |
+| ingrain | buff |  |  |  | `grass_seed` |  |  |  |
 
 ## electric
 
@@ -65,6 +66,7 @@ Vista animada: abrir `tools/vfx-preview.html`.
 | thunderbolt | chain |  | `lightning` |  |  |  | `shock` |  |
 | thunder-wave | stun | `elec_arc` |  |  |  |  | `zap` |  |
 | electro-ball | bounce | `elec_orb` |  |  |  | `spark` | `zap` |  |
+| volt-charge | buff |  |  |  | `elec_orb` |  |  |  |
 
 ## psychic
 
@@ -76,6 +78,7 @@ Vista animada: abrir `tools/vfx-preview.html`.
 | psycho-cut | boomerang | `crescent` |  |  |  |  | `slash` |  |
 | extrasensory | shove | `psy_eye` |  |  |  |  | `psy` |  |
 | mist-ball | homing | `ring` |  |  |  | `wisp` | `bubblepop` |  |
+| calm-mind | buff |  |  |  | `psy_orb` |  |  |  |
 
 ## poison
 
@@ -117,6 +120,7 @@ Vista animada: abrir `tools/vfx-preview.html`.
 | bug-buzz | aura |  |  |  | `bug_swarm` |  | `sting` |  |
 | signal-beam | bounce | `bug_stinger` |  |  |  | `spark` | `sting` |  |
 | u-turn | dash | `bug_wing` |  |  |  |  | `sting` |  |
+| focus-energy | buff |  |  |  | `bug_wing` |  |  |  |
 
 ## rock
 
@@ -127,6 +131,7 @@ Vista animada: abrir `tools/vfx-preview.html`.
 | rock-tomb | stun | `rock_boulder` |  |  |  |  | `pebble` |  |
 | ancient-power | orbit | `rock` |  |  |  |  | `pebble` |  |
 | power-gem | bounce | `shard` |  |  |  | `spark` | `shatter` |  |
+| rock-polish | buff |  |  |  | `rock_chip` |  |  |  |
 
 ## ice
 
@@ -147,6 +152,7 @@ Vista animada: abrir `tools/vfx-preview.html`.
 | rolling-kick | spin |  |  | `fight_fist` |  |  | `punch` |  |
 | vacuum-wave | shove | `fight_wave` |  |  |  |  | `punch` | `aura` |
 | dynamic-punch | stun | `fight_shock` |  |  |  |  | `punch` |  |
+| bulk-up | buff |  |  |  | `fight_shock` |  |  |  |
 
 ## ghost
 
@@ -157,6 +163,7 @@ Vista animada: abrir `tools/vfx-preview.html`.
 | hex | chain |  | `ghost_face` |  |  |  | `soul` |  |
 | shadow-sneak | homing | `ghost_soul` |  |  |  | `wisp` | `soul` |  |
 | ominous-wind | vortex | `ghost_flame` |  |  |  | `wisp` | `soul` |  |
+| laser-focus | buff |  |  |  | `ghost_flame` |  |  |  |
 
 ## dragon
 
@@ -177,6 +184,7 @@ Vista animada: abrir `tools/vfx-preview.html`.
 | draining-kiss | homing | `heart` |  |  |  |  | `glitter` |  |
 | play-rough | melee |  |  | `fairy_ribbon` |  |  | `glitter` |  |
 | disarming-voice | shove | `note` |  |  |  |  | `glitter` |  |
+| life-dew | buff |  |  |  | `fairy_sparkle` |  |  |  |
 
 ## steel
 
@@ -187,6 +195,7 @@ Vista animada: abrir `tools/vfx-preview.html`.
 | meteor-mash | meteor | `rock` |  |  |  | `spark` | `clang` |  |
 | mirror-shot | bounce | `steel_blade` |  |  |  | `spark` | `clang` |  |
 | gyro-ball | spin |  |  | `steel_gear` |  |  | `clang` |  |
+| iron-defense | buff |  |  |  | `steel_gear` |  |  |  |
 
 ## dark
 
@@ -197,3 +206,4 @@ Vista animada: abrir `tools/vfx-preview.html`.
 | night-shade | aura |  |  |  | `shadow` |  | `shade` |  |
 | sucker-punch | homing | `dark_claw` |  |  |  |  | `shade` |  |
 | night-slash | spin |  |  | `dark_slash` |  |  | `slash` |  |
+| hone-claws | buff |  |  |  | `dark_orb` |  |  |  |
