@@ -24,11 +24,12 @@ G.Events = (() => {
   const authority = () => !G.Coop.active || G.Coop.isHost;
 
   let nextT = 0, cur = null, last = null, thiefT = 0, thieves = 0;
+  let escort = 'none';  // Wave: 'none' | 'follow' (en marcha) | 'done' | 'failed' (ver startEscort)
   let lost = null;      // { dex, name, x, y, hp, maxHp, state, follow, tx, ty, t, anim, r, hitCd, netT, grant }
 
   function reset() {
     nextT = G.U.rand(EVERY[0], EVERY[1]);
-    cur = null; last = null; lost = null;
+    cur = null; last = null; lost = null; escort = 'none';
     thiefT = G.U.rand(THIEF_FIRST[0], THIEF_FIRST[1]); thieves = 0;
   }
 
@@ -40,6 +41,7 @@ G.Events = (() => {
       if (cur.id !== 'lost' && cur.t >= cur.dur && authority()) end();
     }
     if (lost) lostTick(dt, players);
+    if (!G.Modes.classic()) return;       // Wave y Boss Rush: sin eventos propios (sólo la escolta de Wave, arriba)
     if (!authority() || G.Rift.inArena || G.Judgment.active) return;
 
     if (thieves < 2) {
@@ -192,7 +194,7 @@ G.Events = (() => {
       }
     }
     if (L.flash > 0) L.flash -= dt;
-    if (L.t > LOST_TIME) return gone(L.name + ' se ha cansado de esperar y se ha ido…');
+    if (L.t > (L.ttl || LOST_TIME)) return gone(L.name + ' se ha cansado de esperar y se ha ido…');
 
     if (G.Coop.isHost && (L.netT -= dt) <= 0) {
       L.netT = 0.1;
@@ -203,6 +205,14 @@ G.Events = (() => {
 
   function rescued() {
     const L = lost;
+    if (L.wave) {                         // escolta de Wave: el premio es el del objetivo, sin tickets ni colección
+      escort = 'done';
+      G.FX.burst(L.tx, L.ty - 10, '#7dffb0', 24, 180);
+      G.Audio.sfx('legend');
+      if (G.Coop.isHost) G.Coop.broadcast(['ev', 'lx', '']);
+      lost = null;
+      return;
+    }
     for (let i = 0; i < 12; i++) G.Pickups.drop('coin', L.tx + G.U.rand(-40, 40), L.ty + G.U.rand(-30, 30), 5);
     G.Pickups.drop('ticket', L.tx, L.ty - 12, 1);
     if (G.Coop.isHost) G.Coop.broadcast(['ev', 'rw', L.dex, L.grant ? 1 : 0]);
@@ -225,8 +235,52 @@ G.Events = (() => {
   function gone(msg) {
     if (G.Coop.isHost) G.Coop.broadcast(['ev', 'lx', msg]);
     say(msg, 3);
+    if (lost && lost.wave) escort = 'failed';
     lost = null;
     end();
+  }
+
+  // ---------------- escolta de Wave ----------------
+
+  /**
+   * Wave: un Pokémon perdido a llevar a una marca a opts.dist px (la misma mecánica que el evento 'lost',
+   * con hasta opts.ttl s). No es el evento (cur): al acabar sólo cambia escortState(). Sólo manda quien decide.
+   */
+  function startEscort(players, opts = {}) {
+    if (!authority() || lost) return false;
+    const dist = opts.dist || 700, ttl = opts.ttl || 90;
+    const alive = players.filter(p => !p.dead);
+    const pl = G.U.pick(alive.length ? alive : players);
+    const pool = G.DEX.filter(p => p.rarity <= 3 && !p.leg && G.SPRITE_META[p.dex] && !G.Sprites.hovers(p.dex));
+    if (!pool.length) return false;
+    const mon = G.U.pick(pool);
+    let at = null, to = null;
+    for (let i = 0; i < 20 && !at; i++) {
+      const a = Math.random() * 6.2832, d = G.U.rand(220, 300);
+      const x = pl.x + Math.cos(a) * d, y = pl.y + Math.sin(a) * d * 0.8;
+      if (G.World.isFree(x, y, 16)) at = [x, y];
+    }
+    for (let i = 0; i < 30 && at && !to; i++) {
+      const a = Math.random() * 6.2832;
+      const x = at[0] + Math.cos(a) * dist, y = at[1] + Math.sin(a) * dist * 0.85;
+      if (G.World.isFree(x, y, 30)) to = [x, y];
+    }
+    if (!at || !to) return false;
+    makeLost({ dex: mon.dex, x: at[0], y: at[1], tx: to[0], ty: to[1], state: 'wait', hp: 100, grant: false, wave: true, ttl });
+    G.Sprites.preload([mon.dex]);
+    escort = 'follow';
+    return true;
+  }
+
+  function escortState() { return escort; }
+
+  /** Wave: acaba la oleada sin haberlo llevado: se retira (y se avisa a los invitados). */
+  function cancelEscort() {
+    if (lost && lost.wave) {
+      lost = null;
+      if (G.Coop.isHost) G.Coop.broadcast(['ev', 'lx', '']);
+    }
+    escort = 'none';
   }
 
   // ---------------- red ----------------
@@ -243,7 +297,7 @@ G.Events = (() => {
         break;
       }
       case 'rw': reward(ev[2], !!ev[3]); lost = null; break;
-      case 'lx': say(ev[2], 3); lost = null; break;
+      case 'lx': if (ev[2]) say(ev[2], 3); lost = null; break;
     }
   }
 
@@ -347,7 +401,7 @@ G.Events = (() => {
   }
 
   return {
-    reset, update, bag, onNet, drawables, drawHud,
+    reset, update, bag, onNet, drawables, drawHud, startEscort, escortState, cancelEscort,
     get golden() { return !!cur && cur.id === 'gold'; },
     get current() { return cur ? cur.id : null; },
     /** Para pruebas. */

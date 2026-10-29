@@ -33,7 +33,7 @@ G.AbilityFX = (() => {
   const mult = (type, types) => G.Types.mult(type, types || []);
   const cls = m => (m && m.cat === 'physical' ? 'p' : m && m.cat === 'special' ? 's' : '');
   const TN = t => G.U.TYPE_NAME[t];
-  const heal = (pl, k) => { pl.hp = Math.min(pl.maxHp, pl.hp + pl.maxHp * k); };
+  const heal = (pl, k) => { pl.hp = Math.min(pl.maxHp, pl.hp + pl.maxHp * k * G.Modes.healK()); };
 
   const pinch = type => ({ d: '+35 % de daño de tipo ' + TN(type) + ' con poca vida (menos de 1/3).',
     out: (pl, m) => (m.type === type && low(pl) ? 1.35 : 1) });

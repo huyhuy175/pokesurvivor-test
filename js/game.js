@@ -102,7 +102,7 @@ G.Game = (() => {
   // ---------------- run ----------------
 
   /** @param coop  { seed, host, members } para una partida en grupo */
-  function startRun(coop = null) {
+  function startRun(coop = null, mode = null) {
     holdBy = []; awayBy = null;
     const save = G.DB.save;
     // Con su naturaleza aplicada (una copia: ver systems/mons.js).
@@ -155,12 +155,13 @@ G.Game = (() => {
       G.Coop.begin(coop, pl, coopApi);
       G.Social.setPlaying(true);
     }
+    G.Modes.begin(coop ? coop.mode : mode, everyone());
     G.Camera.x = pl.x; G.Camera.y = pl.y; G.Camera.shake = 0;
     // Hojas de sprites locales: el compañero y los primeros enemigos.
     G.Sprites.preload([mon.dex], 8000, pl.shiny);
     G.Audio.music(G.BIOME_MUSIC[0]);
     // Para el ranking: el servidor apunta cuándo empieza la partida (anti-trampas).
-    if (!coop || G.Coop.isHost) G.Ranking.runStarted(coop ? 'g' : 's');
+    if (G.Modes.classic() && (!coop || G.Coop.isHost)) G.Ranking.runStarted(coop ? 'g' : 's');
     deathT = 0;
 
     state = 'playing';
@@ -337,24 +338,26 @@ G.Game = (() => {
       jefes: pl.bosses * 80,
       recogidas: pl.coins
     };
-    const coins = Math.round((parts.tiempo + parts.derrotados + parts.jefes + parts.recogidas) * mul);
-    const record = time > save.stats.bestTime;
+    const coins = Math.round((parts.tiempo + parts.derrotados + parts.jefes + parts.recogidas) * mul * G.Modes.rewardMul());
+    const record = G.Modes.classic() && time > save.stats.bestTime;
 
     save.coins += coins;
-    const xp = G.Prestige.grantXp(pl.startDex, { time, level: pl.level, kills: pl.kills, bosses: pl.bosses });
+    const xp = G.Prestige.grantXp(pl.startDex, { time, level: pl.level, kills: pl.kills, bosses: pl.bosses, mul: G.Modes.rewardMul() });
     bankTickets(false);
     save.stats.runs++;
     save.pused = save.pused || {};
     save.pused[pl.startDex] = (+save.pused[pl.startDex] || 0) + 1;     // para "más usados" en la colección
     save.stats.totalKills += pl.kills;
-    save.stats.bestTime = Math.max(save.stats.bestTime, Math.floor(time));
-    if (coop) save.stats.bestGroupTime = Math.max(save.stats.bestGroupTime || 0, Math.floor(time));
+    if (G.Modes.classic()) {      // Wave y Boss Rush no tocan los récords de la partida normal
+      save.stats.bestTime = Math.max(save.stats.bestTime, Math.floor(time));
+      if (coop) save.stats.bestGroupTime = Math.max(save.stats.bestGroupTime || 0, Math.floor(time));
+    }
     save.stats.bestLevel = Math.max(save.stats.bestLevel, pl.level);
     save.stats.coinsEarned += coins;
     const judge = G.Judgment.summary();
     if (judge) G.Progress.event('judgeEnd', judge);
     G.Judgment.reset();
-    G.Progress.event('runEnd', { time, level: pl.level, coins: pl.coins, types: pl.startTypes, group: coop });
+    G.Progress.event('runEnd', { time: G.Modes.classic() ? time : 0, level: pl.level, coins: pl.coins, types: pl.startTypes, group: coop });
     G.Progress.checkAch();
     // A la nube al acabar la partida (como mucho cada hora); si la marca entra
     // en un top (hoy, semana o mes), enseguida (abajo, tras subirla al ranking).
@@ -364,12 +367,16 @@ G.Game = (() => {
     // Ranking: en solitario cada uno lo suyo; en grupo lo sube el anfitrión.
     const mark = { t: Math.floor(time), lv: pl.level, kills: pl.kills, dmg: judge ? judge.dmg : 0 };   // dmg: a Arceus
     // Si la partida se ha tocado (ver clean()), no sube al ranking (sin avisar); lo demás, sí.
-    const ok = clean();
+    const ok = G.Modes.classic() && clean();
     const sent = ok && !coop ? G.Ranking.submitSolo(Object.assign(mark, { dex: pl.startDex, shiny: pl.startShiny }))
                : ok && wasHost ? G.Ranking.submitGroup(Object.assign(mark, { members: team })) : null;
     if (sent) sent.then(b => { if (b && b.some(p => p !== 'a')) G.DB.commit(true); }).catch(() => {});
 
+    const modeResult = G.Modes.result();
+    const modeInfo = modeResult || G.Modes.hc() ? { label: modeResult ? modeResult.label : '', won: !!(modeResult && modeResult.won), hc: G.Modes.hc() } : null;
+    G.Modes.end();
     G.RunUI.showOver({
+      mode: modeInfo,
       dead, time, level: pl.level, kills: pl.kills, bosses: pl.bosses, coins, record, t1: pl.t1, t10: pl.t10, shards: pl.shardsFound || 0, crystals: pl.crystalsFound || 0, mats: pl.matsFound || 0, gems: pl.gemsFound || 0, wish: pl.wishFound || null, xp, judge,
       moves: pl.moves, caught,
       breakdown: Object.entries(parts).filter(([, v]) => v).map(([k, v]) => `${k} ${v}`).join(' · ') +
@@ -708,7 +715,7 @@ G.Game = (() => {
     }
     // Tras caer, deja que se vea la animación de Faint antes del resumen.
     // (En la arena de la grieta no: allí caer sólo te echa de vuelta.)
-    if (pl.dead && !coop && !G.Rift.inArena) {
+    if (pl.dead && !coop && (!G.Rift.inArena || G.Modes.arenaRun())) {
       deathT += dt;
       pl.update(dt);
       G.EnemyMgr.update(dt * 0.3, pl);
@@ -754,6 +761,7 @@ G.Game = (() => {
     G.Rift.update(dt, pl, time);
     G.Judgment.update(dt, pl, time);
     G.Events.update(dt, all, time);
+    G.Modes.tick(dt, all, time);
     G.Weather.update(dt, time, pl);
     G.FX.update(dt);
 
@@ -763,8 +771,19 @@ G.Game = (() => {
     if (G.Coop.isHost) checkAllDown(dt);
   }
 
+  /** Modos: cartas de nivel extra de golpe (el draft de Boss Rush). */
+  function addPendingLevels(n) { pendingLevels += Math.max(0, Math.floor(n) || 0); }
+
+  /** Modos: ganas la partida (Boss Rush). En grupo lo manda el anfitrión. */
+  function winRun() {
+    if (state === 'over' || !pl) return;
+    if (G.Coop.active) { if (!G.Coop.isHost) return; G.Coop.over(summary()); }
+    endRun(false);
+  }
+
   /** Caído en grupo: un compañero a tu lado te va levantando. */
   function reviveTick(dt) {
+    if (G.Modes.noRevive()) return;
     const helper = G.Coop.puppets().some(p => !p.dead && G.U.dist2(p.x, p.y, pl.x, pl.y) < 56 * 56);
     pl.reviveT = helper ? (pl.reviveT || 0) + dt : Math.max(0, (pl.reviveT || 0) - dt * 0.5);
     if (pl.reviveT >= G.Player.REVIVE_TIME) pl.revive(0.5);
@@ -772,7 +791,7 @@ G.Game = (() => {
 
   /** Anfitrión: si caéis todos, se acaba (tras ver caer al último). */
   function checkAllDown(dt) {
-    if (G.Rift.inArena || !G.Coop.players().every(p => p.dead)) { deathT = 0; return; }
+    if ((G.Rift.inArena && !G.Modes.arenaRun()) || !G.Coop.players().every(p => p.dead)) { deathT = 0; return; }
     deathT += dt;
     if (deathT > 1.6) {
       deathT = 0;
@@ -802,6 +821,8 @@ G.Game = (() => {
     const arceus = pl && state !== 'ui' ? G.Judgment.drawable() : null;
     if (arceus) items.push({ y: arceus.y, ent: arceus });
     if (pl && state !== 'ui') for (const d of G.Events.drawables()) items.push({ y: d.y, ent: d });
+    const waveObj = pl && state !== 'ui' ? G.WaveObj.drawable() : null;
+    if (waveObj) items.push({ y: waveObj.y, ent: waveObj });
     items.sort((a, b) => a.y - b.y);
     for (const it of items) {
       if (it.prop) G.World.drawProp(ctx, it.prop, t);
@@ -978,7 +999,7 @@ G.Game = (() => {
   })();
 
   return {
-    init, startRun, everyone, levelXp, flash, offerBond,
+    init, startRun, everyone, levelXp, flash, offerBond, addPendingLevels, winRun,
     /** Para pruebas: salta el reloj de la run. */
     debugTime(t) { tampered = true; time = t; },
     /** Para grabar vídeos: cámara lenta (0,5 = mitad de velocidad). */
@@ -1055,7 +1076,7 @@ G.Flow = {
       G.LobbyUI.open();
     } else this.goMenu();
   },
-  play() { G.Game.startRun(); },
+  play(mode) { G.Game.startRun(null, mode); },
   /** Empieza la partida en grupo (el anfitrión la manda a todos). */
   startCoop(cfg) {
     if (G.Game.state !== 'ui' || !G.Social.room) return;

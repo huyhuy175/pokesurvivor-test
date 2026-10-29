@@ -564,6 +564,7 @@ function playerWorld() {
   G.Mons = { monFor: dex => G.DEX_BY[dex] }; G.Coop = { active: false }; G.Stats = { taken: () => 1 };
   G.Audio = { sfx() {} }; G.Camera = { kick() {} }; G.Pad = { rumble() {} };
   G.FX = { dmgText() {}, burst() {}, ring() {} }; G.Projectiles = { clearOrbs() {} };
+  G.Modes = { rand: () => Math.random, healK: () => 1, noRevive: () => false };
   new Function('G', source('js/entities/player.js'))(G);
   return G;
 }

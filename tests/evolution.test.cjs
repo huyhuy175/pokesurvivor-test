@@ -44,6 +44,7 @@ function evoWorld(owned) {
   const G = data();
   G.DB = { owns: d => owned.includes(d) };
   G.T = s => s;
+  G.Modes = { rand: () => Math.random, healK: () => 1, noRevive: () => false };
   G.I18n = { f: (s, ...v) => { let i = 0; return s.replace(/\{(?:x|name)\}/g, () => v[i++]); } };
   new Function('G', source('js/systems/evolution.js'))(G);
   return G;

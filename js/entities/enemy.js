@@ -1037,6 +1037,7 @@
           if (pl.abil && pl.abil.kill) pl.abil.kill(pl, e);     // Autoestima y parecidas
           if (e.boss && !e.judge) pl.bosses++;
           G.Progress.kill(e);
+          G.Modes.onKill(e);
           corpses.push(e);
           list.splice(i, 1);
           byId.delete(e.id);

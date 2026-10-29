@@ -83,7 +83,7 @@ G.Rift = (() => {
   function update(dt, pl, time) {
     // La especial, aparte: no cuenta en misses ni la para el límite de AT - 120. Sí deja de
     // abrirse si el portal (TTL) más la arena (ARENA_TIME) ya no caben antes de la Sentencia.
-    if (!specialDone && authority() && time >= SPECIAL_AT && time < specialEnd()) {
+    if (!specialDone && G.Modes.classic() && authority() && time >= SPECIAL_AT && time < specialEnd()) {
       specialT -= dt;
       if (specialT <= 0) {
         specialT = CHECK;
@@ -99,7 +99,7 @@ G.Rift = (() => {
         return;
       }
       if (!arena && !pl.dead && G.U.dist2(pl.x, pl.y, rift.x, rift.y - 10) < 30 * 30) enter();
-    } else if (!arena && authority() && time > FROM && time < G.Judgment.AT - 120) {
+    } else if (!arena && G.Modes.classic() && authority() && time > FROM && time < G.Judgment.AT - 120) {
       checkT -= dt;
       if (checkT <= 0) {
         checkT = CHECK;
@@ -177,8 +177,8 @@ G.Rift = (() => {
     const ts = TS();
     arena = Object.assign({}, cfg, {
       x: cfg.tx * ts + ts / 2, y: cfg.ty * ts + ts / 2,
-      back: { x: pl.x, y: pl.y }, biome: G.World.biome, t: 0, phase: 'fight', endT: 0, bossId: 0,
-      special: !!cfg.special, rewarded: false
+      back: { x: pl.x, y: pl.y }, biome: G.World.biome, t: 0, phase: cfg.rush ? 'rush' : 'fight', endT: 0, bossId: 0,
+      special: !!cfg.special, rewarded: false, rush: !!cfg.rush
     });
     zone = { x: arena.x, y: arena.y, r: (cfg.r + 10) * ts };
     rift = null; asked = false; downT = 0;
@@ -197,15 +197,12 @@ G.Rift = (() => {
     G.Camera.x = pl.x; G.Camera.y = pl.y;
     G.Game.flash('#c9a6ff', 0.9);
     G.Audio.sfx('rift');
-    G.Spawner.say('Has entrado en la grieta…', 2.4, true);
+    if (!cfg.rush) G.Spawner.say('Has entrado en la grieta…', 2.4, true);
   }
 
-  function spawnLegend() {
-    const mon = G.DEX_BY[arena.dex];
-    const t = G.Game.st.time;
-    const n = G.Game.everyone().length;
-    const ts = TS();
-    const def = {
+  /** Datos de combate de un legendario de la grieta (t: reloj de la partida; n: jugadores). */
+  function legendDef(mon, t, n) {
+    return {
       dex: mon.dex, name: mon.name,
       hp: Math.round((3200 + t * 9) * G.Coop.scaleHp(n) * (n > 1 ? 1.4 : 1)),
       spd: Math.round(G.U.clamp(48 + (mon.spd - 78) * 0.6, 48, 105)),
@@ -213,6 +210,14 @@ G.Rift = (() => {
       behavior: mon.types.some(x => ['psychic', 'electric', 'ghost', 'fairy', 'fire', 'water', 'ice', 'dragon'].includes(x)) ? 'ranged' : 'charger',
       shotDmg: Math.round(18 + t / 40), shotCd: 0.9, range: 300
     };
+  }
+
+  function spawnLegend() {
+    const mon = G.DEX_BY[arena.dex];
+    const t = G.Game.st.time;
+    const n = G.Game.everyone().length;
+    const ts = TS();
+    const def = legendDef(mon, t, n);
     const e = new G.Enemy(arena.special ? apexDef(def, apexPower()) : def, arena.x, arena.y - ts * 3.5, { hp: 1, spd: 1, dmg: 1 }, true);
     e.legend = true;
     // Apex: sin los tickets ni las monedas del legendario normal (el premio es el vale wish de won()).
@@ -229,6 +234,29 @@ G.Rift = (() => {
     G.Audio.sfx('boss');
   }
 
+  /**
+   * Boss Rush: monta la arena ya, sin grieta ni portal. cfg { tx, ty, r, type }. El anfitrión avisa
+   * a los demás con el mismo mensaje 'arena' (cfg.rush hace que no se pueda ganar ni perder aquí).
+   */
+  function openRush(cfg) {
+    const full = Object.assign({}, cfg, { rush: true });
+    if (G.Coop.isHost) G.Coop.broadcast(['arena', full]);
+    begin(full);
+  }
+
+  /** Boss Rush: un jefe en el norte de la arena. sc: multiplicadores {hp,spd,dmg}; apex: legendario Apex (sin premios sueltos). */
+  function rushSpawn(def, apex, power, sc) {
+    const ts = TS();
+    const d = apex ? apexDef(def, power) : def;
+    const e = new G.Enemy(d, arena.x, arena.y - ts * 3.5, G.Modes.scaleEnemy(sc || { hp: 1, spd: 1, dmg: 1 }), true);
+    if (apex) { e.legend = true; e.apex = true; e.flying = false; }
+    G.EnemyMgr.add(e);
+    arena.bossId = e.id;
+    G.Camera.kick(1.1);
+    G.Audio.sfx('boss');
+    return e;
+  }
+
   /** Nadie sale del círculo de la arena (por si algo empuja demasiado). */
   function keepInside() {
     const ts = TS(), max = (arena.r - 1.4) * ts;
@@ -241,6 +269,8 @@ G.Rift = (() => {
 
   function arenaTick(dt, pl) {
     arena.t += dt;
+    // Boss Rush: la arena dura toda la partida; sin ganar, perder ni volver (lo decide systems/modes-bossrush.js).
+    if (arena.phase === 'rush') { if (authority()) keepInside(); return; }
     if (arena.phase === 'fight') {
       if (!authority()) return;
       keepInside();
@@ -351,10 +381,11 @@ G.Rift = (() => {
   }
 
   return {
-    reset, update, drawable, onEvent, leftBehind, enterRequest() { if (!arena) start(); },
+    reset, update, drawable, onEvent, leftBehind, openRush, rushSpawn, legendDef, apexPower, enterRequest() { if (!arena) start(); },
     get rift() { return rift; }, get arena() { return arena; },
     get inArena() { return !!arena; },
     get special() { return !!(arena && arena.special); },
+    get rush() { return !!(arena && arena.rush); },
     /** Centro y radio jugable (px) de la arena, o null si no hay: lo usa data/apex-moves.js. */
     arenaInfo() { return arena ? { x: arena.x, y: arena.y, r: (arena.r - 0.9) * TS() } : null; },
     get misses() { return misses; },

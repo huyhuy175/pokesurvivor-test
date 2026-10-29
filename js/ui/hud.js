@@ -112,6 +112,8 @@ G.HUD = (() => {
     ctx.font = F(800, 26);
     ctx.fillStyle = 'rgba(255,255,255,.95)';
     ctx.fillText(G.U.mmss(st.time), w / 2, 42);
+    // Modo de partida (Wave, Boss Rush…) y huella de Hardcore.
+    if (G.Modes.hc()) { ctx.font = F(800, 11); ctx.fillStyle = '#ff5a5a'; ctx.textAlign = 'left'; ctx.fillText('HARDCORE', w / 2 + 64, 38); ctx.textAlign = 'center'; }
     ctx.font = F(600, 10);
     ctx.fillStyle = '#8fa3c4';
     ctx.fillText(G.World.biomeName().toUpperCase() + '  ·  ' + pl.kills + ' DERROTADOS  ·  ' + pl.coins + ' MONEDAS', w / 2, 58);
@@ -140,6 +142,8 @@ G.HUD = (() => {
       ctx.fillStyle = '#20160a';
       ctx.fillText(boss.name.toUpperCase(), w / 2, 80);
     }
+    const modeLine = G.Modes.hudLine();
+    if (modeLine) { ctx.textAlign = 'center'; ctx.font = F(800, 12); ctx.fillStyle = '#ffd98a'; ctx.fillText(modeLine, w / 2, boss ? 98 : 76); }
 
     // ---------- aviso ----------
     // ---------- shinies fuera de pantalla: destello en el borde ----------
@@ -227,7 +231,7 @@ G.HUD = (() => {
       }
       ctx.restore();
     }
-    if (G.Rift.inArena) {
+    if (G.Rift.inArena && !G.Modes.arenaRun()) {
       ctx.textAlign = 'center';
       ctx.font = F(800, 12);
       ctx.fillStyle = '#d9c2ff';

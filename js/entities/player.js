@@ -537,7 +537,7 @@ G.Player = class Player {
       G.FX.ring(this.x, this.y, 6, 70, '#c9b48a', 0.5, 4);
     }
     // Pasiva unique que revive (data/passive-unique-fx.js): si devuelve true, no cae.
-    if (this.hp <= 0 && ab && ab.revive && ab.revive(this)) this.invuln = 1.5;
+    if (this.hp <= 0 && ab && ab.revive && !G.Modes.noRevive() && ab.revive(this)) this.invuln = 1.5;
     if (ab && ab.hurt && this.hp > 0) ab.hurt(this, type, cls);
     if (this.hp <= 0) {
       this.hp = 0; this.dead = true;
@@ -548,7 +548,7 @@ G.Player = class Player {
   }
 
   heal(amount, quiet = false) {
-    amount *= this.healMul;                                              // carta Curación mejorada
+    amount *= this.healMul * G.Modes.healK();                            // carta Curación mejorada (y Hardcore)
     if (this.abil && this.abil.healMul) amount *= this.abil.healMul;     // Gula, Recogida
     const before = this.hp;
     this.hp = Math.min(this.maxHp, this.hp + amount);
@@ -642,9 +642,9 @@ G.Player = class Player {
 
     this.tickBuffs(dt);
     if (this.slowT > 0) this.slowT -= dt;
-    if (this.bellHeal > 0) { const h = Math.min(this.bellHeal, 4 * dt); this.hp = Math.min(this.maxHp, this.hp + h); this.bellHeal -= h; }
+    if (this.bellHeal > 0) { const h = Math.min(this.bellHeal, 4 * dt); this.hp = Math.min(this.maxHp, this.hp + h * G.Modes.healK()); this.bellHeal -= h; }
     if (this.power && (this.power.t -= dt) <= 0) { this.power.def.off(this); this.power = null; }
-    if (this.regen > 0) this.hp = Math.min(this.maxHp, this.hp + this.regen * dt);
+    if (this.regen > 0) this.hp = Math.min(this.maxHp, this.hp + this.regen * G.Modes.healK() * dt);
     if (this.abil && this.abil.tick) this.abil.tick(this, dt);
     // Sequía, Llovizna...: su clima al empezar y cada 3 min, si no hay otro (en
     // grupo lo pone el anfitrión, que es quien manda el clima a todos).

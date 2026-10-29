@@ -345,3 +345,9 @@ test('evo events carry a Mega dex (>= 10000) without truncation', () => {
     assert.deepEqual(C.decode(C.encode([ev])), [ev]);
   }
 });
+test('md mode events and a start message carrying a mode round-trip exactly', () => {
+  const ev = ['md', 1, 12, 1, 3, 5, 9];
+  assert.deepEqual(C.decode(C.encode([ev])), [ev]);
+  const start = { k: 'start', seed: 7, host: 'u1', mode: { type: 'wave', hc: true }, members: [{ uid: 'u1', name: 'A', dex: 25, shiny: false }] };
+  assert.deepEqual(C.decode(C.encode(start)), start);
+});

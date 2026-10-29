@@ -139,6 +139,20 @@ Không module/bundler; mọi thứ treo trên đối tượng toàn cục `G`. T
 - Test: `tests/signature-moves.test.cjs`, `tests/signature-player.test.cjs`, thêm vào `tests/balance.test.cjs`; xem thử `tools/signature-preview.html`.
 - **Chưa kiểm**: chơi thật. Thử: `G.DB.save.dupes = {150: 15}` (Mewtwo 5★) vào ván → ô 5; `{4: 15}` rồi tiến hóa tới Charizard; `G.DB.save.dupes` với nhiều loài; ghép với buff. **Rủi ro cân bằng**: với kind nhiều đòn (orbit, quake, chain, cone, nova) `dmg` của move đặc trưng thấp hơn move thường cùng kind vì `dps` nominal của chúng đã cao; cơ chế riêng và chỉ số có thể thấy yếu/mạnh hơn `dps` nói. Việc còn lại: 87 tên/cơ chế legendary là lựa chọn của tôi (tên chính thức khi có; 10 tên bị đổi để không trùng tên pasiva unique của dòng) — chủ dự án nên đọc `tools/signature_design.json`. **Đã sửa sau đó (28-10)**: `SigFX.extra(pl, …)` cộng sát thương phụ vào `m.dealt`/`pl.dmgDealt`; ficha của form gốc (Charmander) hiện move của dòng, ghi "Unlocks at 5★ · on Charizard" (`abilityOf.sig.via`, đi theo `G.EVO`); `POWER.bossbane` hạ từ 0,3 xuống 0,1 (sát thương nền chỉ giảm ~6% thay vì ~17%), đã chạy lại `tools/gen_signature.js`.
 
+### 4.16 Chế độ chơi mới: Wave, Boss Rush, Hardcore (xong code 2026-10-29, chưa chơi thử, chưa commit)
+
+Spec: `docs/superpowers/specs/2026-10-28-game-modes-design.md`; plan: `docs/superpowers/plans/2026-10-28-game-modes.md`.
+
+- **Kiến trúc**: `G.Modes` (`js/systems/modes.js`) là registry có hook; `normal` không có hook nên ván Thường y như cũ. `modes-wave.js` (`G.Wave`), `modes-bossrush.js` (`G.BossRush`), `modes-wave-obj.js` (`G.WaveObj`, nhiệm vụ bản đồ), `js/ui/modes-ui.js` (màn "Modes"). Hardcore là cờ `cfg.hc`, hệ số quái nhân ở một chỗ (`Modes.scaleEnemy`).
+- **Điểm móc**: `startRun(coop, mode)` → `Modes.begin`; `endRun` → `Modes.result()` rồi `Modes.end()`; `Spawner.update` nhường cho `current.spawn`; `enemy.js` gọi `Modes.onKill`; `Events.update`/`Judgment.update`/mở grieta chỉ khi `Modes.classic()`. `Rift.openRush`/`rushSpawn`/`legendDef` (arena cả ván cho Boss Rush, pha `rush`).
+- **Cách ly với ván Thường**: Wave/Boss Rush không đụng `bestTime`/`bestGroupTime`, không gửi `time` cho nhiệm vụ "sống sót", không gọi `Ranking.*`, boss trong arena không tính là legendary đã vượt.
+- **Lưu**: sáu khóa phẳng `stats.bestWave/bestWaveHc/bestStage/bestStageHc/rushClears/rushClearsHc` (gộp max).
+- **Co-op**: `start` mang `mode:{type,hc}`; sự kiện `['md', kind, n, phase, obj, prog, mask, cx?, cy?]` (xem `docs/MULTIPLAYER_PROTOCOL.md`); mỗi máy tự nhận thưởng cho mình khi thấy trạng thái nghỉ/thắng. Host chọn chế độ ở `#lobby-mode`.
+- **Hằng số ước tính cần chỉnh sau khi chơi thử**: `Modes.HARDCORE` (hpK 1.5, dmgK 1.4, rateK 1.25, spdK 1.1, healK 0.5, rewardK 1.75, dropK 1.5); `Wave`: `quota` (10 + 4·n^1.1, trần 160), hệ số sau đợt 27 (+6% máu, +4% dmg, élite tới 50%), `REWARDS`, `HOLD_BELOW`, `BOSS_TIME`; `BossRush`: `STAGE_REST`, `DRAFT`, `APEX_POWER`, `APEX_T`, `FINAL_REWARD`.
+- **Lệnh gỡ lỗi** (chỉ khi `?dev`): `G.Modes.debug('wave', true)`, `G.Modes.debug('bossrush')`, `G.Modes.debugWave(25)`; trong ván: `G.WaveObj.spawn('light', {x,y}, 0, 4)`.
+- **Danh sách chơi thử**: (1) "Jugar" vẫn vào thẳng ván Thường (rift, Sentencia vẫn xuất hiện); (2) 6 biến thể (Thường/Wave/Boss Rush × Hardcore); (3) Wave tới đợt 5 (boss), đợt 28 (hệ số), đợt 25 (Apex), FPS ở đợt cao, ba nhiệm vụ bản đồ; (4) Boss Rush: 3 thẻ draft, nghỉ 10 s, Apex có chiêu đặc trưng, chặng 10 luôn furia, chết thì ra màn kết thúc; (5) co-op hai tab: host chọn Wave rồi Boss Rush, khách thấy HUD đợt/chặng, đèn thắp bên host hiện ở khách, mỗi người tự nhận thưởng; (6) Hardcore: không reroll, hồi máu giảm, không cứu được đồng đội.
+- **Rủi ro đã biết**: Boss Rush co-op phụ thuộc thứ tự gói `start` → `arena` (host phát `arena` ngay trong `startRun`); vị trí nhiệm vụ bản đồ suy ra từ (tâm, n) và giả định thế giới sinh giống nhau ở mọi máy; Wave vô hạn có thể nặng ở đợt cao (trần 64 quái, cần đo FPS); nhiệm vụ "hạ boss" trong Boss Rush hoàn thành rất nhanh.
+
 ### 4.5 Khác
 - Menu Kecleon: bỏ chữ "Cápsulas" ở `dev.html`. (Vẫn còn vài **comment** nhắc Cápsulas trong code — vô hại.)
 

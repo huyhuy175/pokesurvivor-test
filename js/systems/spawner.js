@@ -96,7 +96,7 @@ G.Spawner = (() => {
     return full;
   }
 
-  function spawnOne(pl, t, angle) {
+  function spawnOne(pl, t, angle, opts = {}) {
     const bag = G.Enemies.bagAt(t);
     let def = G.U.pick(bag);
     if (SUPPORT.has(def.behavior)) {
@@ -110,9 +110,10 @@ G.Spawner = (() => {
     const pt = freePoint(pl, angle == null ? Math.random() * 6.2832 : angle, isFlyer(def));
     if (!pt) return null;
     const shiny = rollShiny(def.dex);
-    const e = new G.Enemy(def, pt[0], pt[1], scaled(G.Enemies.scale(t), G.Coop.scaleHp(players.length) * hpK(t)));
+    const e = new G.Enemy(def, pt[0], pt[1], scaled(G.Modes.scaleEnemy(G.Enemies.scale(t)), G.Coop.scaleHp(players.length) * hpK(t)));
     e.dmg *= DMG_K; e.xp = Math.round(e.xp * XP_K);
-    if (G.EnemyMgr.count >= CAP * ELITE_FROM) { e.maxHp = e.hp = Math.round(e.maxHp * 1.6); e.dmg *= 1.25; e.xp = Math.round(e.xp * 1.6); }
+    if (opts.elite || G.EnemyMgr.count >= CAP * ELITE_FROM) { e.maxHp = e.hp = Math.round(e.maxHp * 1.6); e.dmg *= 1.25; e.xp = Math.round(e.xp * 1.6); e.elite = true; }
+    if (opts.mul) { e.maxHp = e.hp = Math.round(e.maxHp * opts.mul.hp); e.dmg *= opts.mul.dmg; }     // modos: refuerzo por oleada
     if (shiny) e.makeShiny();
     if (G.Events.golden) e.makeGolden();
     G.EnemyMgr.add(e);
@@ -123,9 +124,12 @@ G.Spawner = (() => {
     return e;
   }
 
-  function spawnBoss(pl, t, b) {
+  /** opts.apex: legendario Apex (def ya reforzado: sin escala de jefe, sin premios sueltos); opts.mul {hp,dmg}: refuerzo del modo. */
+  function spawnBoss(pl, t, b, opts = {}) {
     const [x, y] = ringPoint(pl, Math.random() * 6.2832);
-    const e = new G.Enemy(b, x, y, scaled(G.Enemies.bossScale(t), G.Coop.scaleHp(players.length) * (players.length > 1 ? 1.4 : 1)), true);
+    const e = new G.Enemy(b, x, y, scaled(G.Modes.scaleEnemy(opts.apex ? { hp: 1, dmg: 1, spd: 1 } : G.Enemies.bossScale(t)), G.Coop.scaleHp(players.length) * (players.length > 1 ? 1.4 : 1)), true);
+    if (opts.apex) { e.legend = true; e.apex = true; e.flying = false; }
+    if (opts.mul) { e.maxHp = e.hp = Math.round(e.maxHp * opts.mul.hp); e.dmg *= opts.mul.dmg; }
     if (rollShiny(b.dex)) e.makeShiny();
     G.EnemyMgr.add(e);
     say('¡' + e.name + (e.shiny ? ' shiny' : '') + ' salvaje apareció!', 3.2);
@@ -138,6 +142,7 @@ G.Spawner = (() => {
   function update(dt, who, t) {
     players = Array.isArray(who) ? who : [who];
     if (announceT > 0) announceT -= dt;
+    if (G.Modes.current.spawn) { G.Modes.current.spawn(dt, players, t); return; }
     // En la arena de la grieta no sale nada más (y el reloj de jefes espera).
     // En la Sentencia de Arceus, sólo sus legendarios (systems/judgment.js).
     if (G.Rift.inArena || G.Judgment.active) return;
@@ -156,7 +161,7 @@ G.Spawner = (() => {
 
     // --- goteo normal ---
     if (G.EnemyMgr.count < CAP) {
-      acc += rate(t) * G.Coop.scaleRate(players.length) * (bossFight ? 0.25 : 1) * dt;
+      acc += rate(t) * G.Coop.scaleRate(players.length) * (bossFight ? 0.25 : 1) * G.Modes.rateK() * dt;
       let n = Math.floor(acc);
       acc -= n;
       while (n-- > 0 && G.EnemyMgr.count < CAP) spawnOne(anchor(), t);
@@ -208,6 +213,6 @@ G.Spawner = (() => {
   /** Invitado en cooperativo: sólo corre el reloj del aviso. */
   function tickBanner(dt) { if (announceT > 0) announceT -= dt; }
 
-  return { reset, update, ahead, burst, tickBanner, banner, say, rate, SHINY_RATE, CAP,
+  return { reset, update, ahead, burst, tickBanner, banner, say, rate, SHINY_RATE, CAP, spawnOne, spawnBoss, anchor,
            debugForceShiny(n = 1) { forceShiny = n; } };
 })();

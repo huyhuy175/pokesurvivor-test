@@ -65,6 +65,19 @@ JSON trust model.
 - Apex signature moves (2026-10-28, `js/data/apex-moves.js`) add **no** message: the host builds them only from the existing `hz` hazards
   (`G.Hazards.add`) and enemy shots (`enemyShot`), so guests see them like any other boss attack. The move-name banner goes through the existing `say` message (`Spawner.say`), so guests see it too.
 
+- Game modes (2026-10-28, `js/systems/modes*.js`). The `start` message gains `mode: { type, hc }`
+  (`type` is `normal`, `wave` or `bossrush`; `hc` is Hardcore). Every machine calls `Modes.begin` with it; an unknown or malformed
+  mode falls back to `normal` (`Modes.normalize`), and an old client that ignores the field simply plays a normal run.
+- `md` — mode state, host to guests only: `['md', kind, n, phase, obj, prog, mask]`, all integers. `kind` 1 = Wave, 2 = Boss Rush.
+  `phase` 0 intro/wait, 1 fight, 2 rest, 3 over/cheer. Wave: `n` = wave, `obj` = objective code (`id * 64 + type`), `prog` = progress,
+  `mask` bit0 = objective done (set while resting), bit1 = failed, bits 8+ = map-objective state (one bit per lit lamp, or the freed captive).
+  A fighting map objective (rescue, lamps) adds an optional tail `cx, cy`: the centre both machines derive the same positions from. Boss Rush: `n` = bosses spawned, `prog` = bosses defeated,
+  `mask` bit0 = cleared. The host sends it when kind/n/phase/obj/mask change, progress at most twice a second, and a resend every 2 s
+  in case one was lost. Guests clamp every field (`Modes.onNet`) and ignore a `kind` that is not their mode; each machine pays out
+  its own player's rewards when it sees the rest/cleared state, so nothing about `md` is written to a save.
+- Boss Rush reuses the rift `arena` message with an extra `rush: true` in its config: the arena lasts the whole run and never
+  wins, loses or returns (`Rift.openRush`).
+
 ## Reproducible measurement
 
 Run `node tools/bench_net.cjs`. These are synthetic packets based on the actual

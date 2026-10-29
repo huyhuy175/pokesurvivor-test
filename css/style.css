@@ -1029,3 +1029,12 @@ html:lang(zh-Hant) { --font: 'Pixelify', 'PingFang TC', 'Microsoft JhengHei', 'N
 html:lang(zh-Hans) { --font: 'Pixelify', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', system-ui, sans-serif; }
 html:lang(zh) body { line-height: 1.5; -webkit-font-smoothing: antialiased; }
 html:lang(zh) .btn, html:lang(zh) .chip { letter-spacing: 0; }
+
+/* ---------- modos de partida ---------- */
+.mode-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.mode-card { appearance: none; cursor: pointer; text-align: left; color: inherit; font: inherit; padding: 12px; border: 2px solid rgba(244,248,255,.2); }
+.mode-card:hover, .mode-card:focus-visible { border-color: var(--gold); }
+.mode-card .sub { margin: 4px 0; font-size: 13px; }
+.mode-rec { font-size: 12px; color: var(--gold); }
+.mode-hc { color: #ff5a5a; font-size: 11px; }
+#modes-hc.on { border-color: #ff5a5a; color: #ff8a8a; }

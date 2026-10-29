@@ -38,6 +38,7 @@ G.RunUI = (() => {
    * derrotado (en grupo cuentan los jefes del equipo; cada uno tiene los suyos).
    */
   function rerollsLeft() {
+    if (G.Modes.noReroll()) return 0;
     const p = G.Game.player;
     // 1 gratis + los comprados en Mejoras (antes, 1 más por cada jefe).
     return p ? Math.max(0, 1 + (p.rerollBonus || 0) - (p.rerolls || 0)) : 0;
@@ -125,6 +126,7 @@ G.RunUI = (() => {
   function showOver(r, onBack) {
     $('over-title').textContent = r.dead ? 'Has caído…' : 'Run terminada';
     $('over-stats').innerHTML = `
+      ${r.mode ? `<div style="grid-column:1/-1;text-align:center"><b class="gold">${r.mode.label}</b>${r.mode.hc ? ' <b style="color:#ff5a5a">HARDCORE</b>' : ''}</div>` : ''}
       <div><span>Tiempo</span><b>${G.U.mmss(r.time)}</b></div>
       <div><span>Nivel</span><b>${r.level}</b></div>
       <div><span>Derrotados</span><b>${r.kills}</b></div>

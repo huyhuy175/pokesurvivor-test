@@ -186,6 +186,7 @@
     <div class="box">
       <div class="menu-list">
         <button class="menu-item play" data-go="play">Jugar<small>Entra en la mazmorra</small></button>
+        <button class="menu-item" data-go="modes">Modes<small>Wave, Boss Rush and Hardcore</small></button>
         <button class="menu-item" data-go="dex">Pokémon<small id="menu-dex-count">Tu colección</small></button>
         <button class="menu-item" data-go="upgrades">Mejoras<small>Haz más fuerte cada run</small></button>
         <button class="menu-item" data-go="shop">Tienda Kecleon<small>Mentas y MT</small></button>
@@ -384,6 +385,7 @@
     <div id="lobby-members" class="lobby-members"></div>
     <h3 id="lobby-inv-title" style="margin:14px 0 6px">Invitar amigos</h3>
     <div id="lobby-invite" class="fr-list"></div>
+    <div id="lobby-mode" class="chips hidden" style="margin-top:14px"></div>
     <div class="row" style="margin-top:14px">
       <button id="lobby-start" class="btn gold grow">Empezar partida</button>
     </div>
@@ -510,6 +512,16 @@
     <div class="row between"><h2>Forja Evolutiva</h2><button class="btn small ghost" data-back>Volver</button></div>
     <p class="sub" id="forge-hello">Gasta Fragmentos Evolutivos para desbloquear la forma evolucionada de un Pokémon que ya tienes. No se eligen de compañero: se usan al evolucionar durante la partida, con una Piedra Evolutiva. Los fragmentos caen de los jefes y los cofres grandes, y se ganan con misiones y logros.</p>
     <div id="forge-body"></div>
+  </div>
+</section>
+
+<!-- ====== Modos de partida ====== -->
+<section id="scr-modes" class="scr dim hidden">
+  <div class="box wide">
+    <div class="row between"><h2>Modes</h2><button class="btn small ghost" data-back>Volver</button></div>
+    <p class="sub">Pick how you want to play. Hardcore makes any mode harder and pays more.</p>
+    <div class="chips" style="margin-bottom:10px"><button class="chip" id="modes-hc" type="button" aria-pressed="false">Hardcore</button></div>
+    <div id="modes-list" class="mode-list"></div>
   </div>
 </section>
 
@@ -704,6 +716,10 @@
 <script defer src="js/systems/rift.js"></script>
 <script defer src="js/systems/judgment.js"></script>
 <script defer src="js/systems/events.js"></script>
+<script defer src="js/systems/modes.js"></script>
+<script defer src="js/systems/modes-bossrush.js"></script>
+<script defer src="js/systems/modes-wave.js"></script>
+<script defer src="js/systems/modes-wave-obj.js"></script>
 <script defer src="js/systems/weather.js"></script>
 <script defer src="js/systems/pathing.js"></script>
 <script defer src="js/systems/progress.js"></script>
@@ -722,6 +738,7 @@
 <script defer src="js/ui/login.js"></script>
 <script defer src="js/ui/test.js"></script>
 <script defer src="js/ui/menu.js"></script>
+<script defer src="js/ui/modes-ui.js"></script>
 <script defer src="js/ui/prestige-ui.js"></script>
 <script defer src="js/ui/slots.js"></script>
 <script defer src="js/ui/gacha-ui.js"></script>

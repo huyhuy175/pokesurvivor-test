@@ -209,10 +209,30 @@
       });
     }
 
+    // Modo de la partida que elige el anfitrión (los invitados lo saben al empezar: va en el mensaje 'start').
+    let modeSel = { type: 'normal', hc: false };
+    const MODE_CHIPS = [['normal', 'Normal'], ['wave', 'Wave'], ['bossrush', 'Boss Rush']];
+
+    function renderMode(room) {
+      const box = $('lobby-mode');
+      box.classList.toggle('hidden', !room.isHost);
+      if (!room.isHost) return;
+      box.innerHTML = '';
+      const mk = (label, on, fn) => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'chip' + (on ? ' on' : ''); b.textContent = label;
+        b.onclick = fn;
+        box.appendChild(b);
+      };
+      for (const [id, label] of MODE_CHIPS) mk(label, modeSel.type === id, () => { modeSel = G.Modes.normalize({ type: id, hc: modeSel.hc }); render(); });
+      mk('Hardcore', modeSel.hc, () => { modeSel = { type: modeSel.type, hc: !modeSel.hc }; render(); });
+    }
+
     function render() {
       const room = G.Social.room;
       if (!room) return;
       const ms = room.members;
+      renderMode(room);
       $('lobby-sub').textContent = room.isHost
         ? 'Eres el anfitrión. Invita a tus amigos (hasta ' + G.Social.MAX_PLAYERS + ') y empezad cuando estéis.'
         : 'Estás en la sala de ' + ((ms.find(m => m.uid === room.host) || {}).name || '…') + '. El anfitrión empezará la partida.';
@@ -264,7 +284,7 @@
       const failed = ms.some(m => m.uid !== room.host && G.Net.mode(m.uid) === 'failed');
       btn.disabled = !room.isHost || ms.length < 2 || connecting || failed;
       btn.textContent = 'Empezar partida (' + ms.length + '/' + G.Social.MAX_PLAYERS + ')';
-      $('lobby-note').textContent = !room.isHost ? 'Cuando el anfitrión empiece, entraréis todos a la vez.'
+      $('lobby-note').textContent = !room.isHost ? 'Cuando el anfitrión empiece, entraréis todos a la vez. The host picks the mode.'
         : ms.length < 2 ? 'Necesitas al menos un amigo en la sala.'
         : failed ? 'No se puede conectar con algún amigo: su red (o la tuya) no deja jugar en grupo. Probad con otra wifi o datos móviles; se reintenta solo.'
         : connecting ? 'Conectando con tus amigos…' : 'La partida empieza para todos a la vez.';
@@ -274,7 +294,7 @@
       const room = G.Social.room;
       if (!room || !room.isHost || room.members.length < 2) return;
       const cfg = {
-        k: 'start', seed: Math.floor(Math.random() * 1e6), host: room.host,
+        k: 'start', seed: Math.floor(Math.random() * 1e6), host: room.host, mode: G.Modes.normalize(modeSel),
         members: room.members.map(m => ({ uid: m.uid, name: m.name, dex: m.dex, shiny: !!m.shiny }))
       };
       G.Social.setOpen(false);

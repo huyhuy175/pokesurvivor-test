@@ -68,6 +68,7 @@ G.Evo = (() => {
   /** Cae un enemigo (e.boss: jefe; e.judge: legendario de la Sentencia, no suelta nada). */
   function onKill(pl, e, rand) {
     if (e.judge) return;
+    if (!rand) rand = G.Modes.rand();
     if (e.boss) grantShards(pl, SHARDS.boss);
     if (G.Mega) G.Mega.onKill(pl, e, rand);
     if (G.Prestige) G.Prestige.onKill(pl, e, rand);

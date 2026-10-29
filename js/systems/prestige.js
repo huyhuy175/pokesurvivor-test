@@ -57,7 +57,7 @@ G.Prestige = (() => {
     return perks;
   }
 
-  const runXp = r => Math.floor((r.time || 0) / 10 + (r.kills || 0) / 20 + (r.bosses || 0) * 15 + (r.level || 0));
+  const runXp = r => Math.floor(((r.time || 0) / 10 + (r.kills || 0) / 20 + (r.bosses || 0) * 15 + (r.level || 0)) * (r.mul || 1));
 
   /** Suma la EXP de una partida. → { gained, level, capped } */
   function grantXp(dex, run) {

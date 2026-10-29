@@ -49,7 +49,7 @@ G.PassiveFX = (() => {
       hooks: v => ({ contact: (pl, e) => e.hurt((10 + pl.level * 3) * v / 100, '#9aa6b5') }) },
     // --- recuperación ---
     killHeal: { cost: 0.6, min: 2, max: 10, text: v => `Heals ${v / 10}% of max health per enemy defeated.`,
-      hooks: v => ({ kill: pl => { pl.hp = Math.min(pl.maxHp, pl.hp + pl.maxHp * v / 1000); } }) },
+      hooks: v => ({ kill: pl => { pl.hp = Math.min(pl.maxHp, pl.hp + pl.maxHp * v / 1000 * G.Modes.healK()); } }) },
     regen:    { cost: 0.8, min: 1, max: 6, text: v => `Regenerates ${v / 10}% of max health per second.`,
       hooks: v => ({ start: pl => { pl.regenFlat += pl.maxHp * v / 1000; } }) },
     healMul:  { cost: 0.1, min: 10, max: 60, text: v => `Healing received is ${v}% stronger.`,

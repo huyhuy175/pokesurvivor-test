@@ -17,6 +17,7 @@ function world() {
   G.T = s => s;                                   // (las traducciones no se cargan en los tests)
   G.Audio = { sfx() {} }; G.Camera = { kick() {} }; G.Pad = { rumble() {} };
   G.FX = { dmgText() {}, burst() {}, ring() {} }; G.Projectiles = { clearOrbs() {} };
+  G.Modes = { rand: () => Math.random, healK: () => 1, noRevive: () => false };
   new Function('G', source('js/entities/player.js'))(G);
   new Function('G', source('js/systems/levelup.js'))(G);
   return G;

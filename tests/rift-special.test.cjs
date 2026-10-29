@@ -37,6 +37,7 @@ function world(opts = {}) {
     Spawner: { say(t) { calls.say.push(t); } },
     // La de verdad (30:00). Las grietas normales no estorban: Math.random fijo (arriba) las deja sin salir.
     Judgment: { AT: 1800 },
+    Modes: { classic: () => true },
     DEX: mons, DEX_BY: { 150: mons[0], 151: mons[1] }, SPRITE_META: { 150: {}, 151: {} },
     DB: { save: { legends: {} }, commit(u) { calls.commit.push(u); return true; } },
     Progress: { event() {} },
