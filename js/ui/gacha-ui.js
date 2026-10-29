@@ -71,6 +71,7 @@ G.GachaUI = (() => {
        <p class="note">${G.Gacha.pool(4, gen).length ? '· La tirada ×10 garantiza al menos una Épica.' : '· Este banner no tiene Épicas de forma base: sus tiradas de Épica salen como Raras.'}<br>
        · A las ${G.Gacha.PITY_5} tiradas sin Legendaria en un banner, la siguiente lo es.<br>
        · Los repetidos dan Pokémonedas. Los shiny no se repiten.<br>
+       · Un Pokémon con 10★ ya no sale en el banner. Si todos están al máximo, las tiradas dan Pokémonedas (Épica y Legendaria: Gemas).<br>
        · Los tickets se consiguen jugando: algunos Pokémon los sueltan al caer, y
          los jefes y los legendarios de las grietas, a veces, tickets ×10.</p>`;
 
@@ -129,11 +130,27 @@ G.GachaUI = (() => {
     if (n === 100) {
       cards = res.slice().sort((a, b) => rank(b) - rank(a));
       const news = res.filter(r => r.isNew).length, sh = res.filter(r => r.shiny).length, coins = res.reduce((a, r) => a + r.refund, 0);
+      const gems = res.reduce((a, r) => a + (r.gems || 0), 0);
       out.insertAdjacentHTML('beforeend', `<div class="pull-sum">${G.I18n.f('Nuevos: {x}', news)} · ${G.Icons.html('shiny', 14)} ${G.I18n.f('Shiny: {x}', sh)}
-        · <span class="coin"></span> +${coins.toLocaleString(G.I18n.locale)}</div>`);
+        · <span class="coin"></span> +${coins.toLocaleString(G.I18n.locale)}${gems ? ` · ${G.Icons.html('gem', 14)} +${gems}` : ''}</div>`);
     }
 
     for (const r of cards) {
+      if (r.converted) {
+        // Banner agotado: no hay Pokémon, sólo la recompensa.
+        const c = document.createElement('div');
+        c.className = 'pcard r' + r.rarity;
+        c.style.setProperty('--rc', G.Gacha.RARITY_COLOR[r.rarity]);
+        c.innerHTML = `<div class="stars">${G.UI.stars(r.rarity, 24)}</div>
+          <div style="height:120px;display:flex;align-items:center;justify-content:center">${r.gems ? G.Icons.html('gem', 64) : '<span class="coin" style="transform:scale(3)"></span>'}</div>
+          <b>${r.gems ? G.T('Gems') : G.T('Pokémonedas')}</b>
+          <div class="tag">${r.gems ? G.Icons.html('gem', 14) + ' +' + r.gems : '<span class="coin"></span> +' + r.refund}</div>`;
+        out.appendChild(c);
+        if (skip) continue;
+        if (n < 100 || r.rarity >= 4) G.Audio.sfx('reveal', { rarity: r.rarity });
+        await wait(n === 100 ? 30 : n === 10 ? 150 : 0);
+        continue;
+      }
       const mon = G.DEX_BY[r.dex];
       const c = document.createElement('div');
       c.className = 'pcard r' + r.rarity + (r.shiny ? ' shiny' : '');

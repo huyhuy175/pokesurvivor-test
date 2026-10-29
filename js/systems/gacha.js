@@ -33,6 +33,7 @@ G.Gacha = (() => {
   const SHINY_RATE = 1 / 100;
   const SHINY_RATE_IRIS = 2 / 100;
   const REFUND = { 1: 15, 2: 30, 3: 60, 4: 120, 5: 300 };
+  const GEM_REFUND = { 4: 3, 5: 10 };   // banner agotado: Épica y Legendaria dan Gemas en vez de monedas
   let forceShiny = 0;           // para pruebas y vídeos: las N próximas salen shiny
 
   const RARITY_NAME = { 1: 'Común', 2: 'Poco común', 3: 'Rara', 4: 'Épica', 5: 'Legendaria' };
@@ -57,15 +58,18 @@ G.Gacha = (() => {
   function pool(rarity, gen) { return G.DEX.filter(p => inBanner(p, gen) && p.rarity === rarity); }
 
   /** Pool no vacío más cercano (algunas generaciones tienen rarezas casi vacías). */
-  function poolNear(rarity, gen) {
+  function poolNear(rarity, gen, ok = () => true) {
     for (const d of [0, -1, 1, -2, 2, -3, 3, -4, 4]) {
       const r = rarity + d;
       if (r < 1 || r > 5) continue;
-      const p = pool(r, gen);
+      const p = pool(r, gen).filter(ok);
       if (p.length) return { rarity: r, list: p };
     }
-    return { rarity, list: G.DEX.filter(p => inBanner(p, gen)) };
+    return { rarity, list: G.DEX.filter(p => inBanner(p, gen) && ok(p)) };
   }
+
+  /** Un Pokémon con las 10★ (15 repetidos) ya no sale del banner. */
+  const notMaxed = p => G.Rank.dupesOf(p.dex) < G.Rank.MAX_DUPES;
 
   /** Cuántos tienes de una generación → { have, total }. */
   function dexOf(save, gen) {
@@ -96,6 +100,8 @@ G.Gacha = (() => {
    * Hace `n` tiradas en el banner `gen` sobre el guardado `save` (lo modifica).
    * Devuelve null si no hay monedas, o la lista de resultados:
    *   { dex, rarity, shiny, isNew, refund, star }
+ * (un Pokémon con 10★ ya no sale; si todo el banner está al máximo la tirada es
+ *   { dex: 0, converted: true, refund, gems }: monedas, o Gemas si era Épica/Legendaria)
    * (star = estrella nueva si este repetido ha subido el Rank, si no 0)
    * (y en .iris la generación si estas tiradas te han dado su Amuleto Iris).
    */
@@ -127,7 +133,16 @@ G.Gacha = (() => {
       else if (n === 10 && i === n - 1 && !out.some(r => r.rarity >= 4)) want = rollRarity(4);
       else want = rollRarity();
 
-      let { rarity, list } = poolNear(want, gen);
+      let { rarity, list } = poolNear(want, gen, notMaxed);
+      // Banner agotado (todos al máximo): la tirada se convierte en Pokémonedas, o en Gemas si era Épica/Legendaria.
+      if (!list.length) {
+        if (want === 5) save.pity[gen] = 0;
+        const gems = GEM_REFUND[want] || 0, refund = gems ? 0 : REFUND[want];
+        save.coins += refund;
+        if (gems) save.gems = Math.min(1e9, (save.gems || 0) + gems);
+        out.push({ dex: 0, rarity: want, shiny: false, isNew: false, refund, gems, star: 0, converted: true });
+        continue;
+      }
       // Vale de garantía: la última tirada es un Pokémon que aún no tienes. Respeta el pity (5★) y la
       // garantía del ×10 (≥4★ si no ha salido ninguno); si no queda de esa rareza, cualquiera que falte.
       // El vale sólo se gasta si esto se aplica de verdad (si las 9 primeras completaron el banner, no).
@@ -242,6 +257,6 @@ G.Gacha = (() => {
   }
 
   return { debugForceShiny(n = 1) { forceShiny = n; }, missing, missingIn, pendingType, startTypePick, claim, rollWish,
-           costOf, RATES, PITY_5, SHINY_RATE, SHINY_RATE_IRIS, REFUND, RARITY_NAME, RARITY_COLOR, BANNERS,
+           costOf, RATES, PITY_5, SHINY_RATE, SHINY_RATE_IRIS, REFUND, GEM_REFUND, RARITY_NAME, RARITY_COLOR, BANNERS,
            pool, featured, pull, dexOf, hasIris, shinyRate };
 })();

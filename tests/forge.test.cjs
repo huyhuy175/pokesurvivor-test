@@ -41,7 +41,8 @@ test('gacha pools and pulls never contain an evolved form', () => {
     for (let k = 0; k < 20; k++) {
       const out = G.Gacha.pull(save, 100, gen);
       assert.equal(out.length, 100);
-      for (const r of out) assert.ok(r.dex && !G.EVO_FROM[r.dex], `gen ${gen} pulled ${r.dex}`);
+      // 2000 tiradas agotan el banner: lo que sobra se convierte en monedas/Gemas (sin Pokémon).
+      for (const r of out) assert.ok(r.converted ? !r.dex : r.dex && !G.EVO_FROM[r.dex], `gen ${gen} pulled ${r.dex}`);
     }
   }
 });

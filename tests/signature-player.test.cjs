@@ -172,56 +172,56 @@ function sigPlayer() {
 }
 const learn = (pl, ...ids) => ids.forEach(id => assert.ok(pl.addMove(id), id));
 
-test('the signature move fuses with up to two buffs, in that order, spending one bond each', () => {
+test('the signature move fuses like a normal group: up to BOND_MAX moves, spending one bond each', () => {
   const { pl } = sigPlayer();
   learn(pl, 'calm-mind', 'nasty-plot', 'agility');
-  pl.bonds = 3;
-  const buff = id => pl.moves.find(m => m.id === id);
+  pl.bonds = 4;
+  const m = id => pl.moves.find(x => x.id === id);
   let opt = pl.bondOptions();
   assert.equal(opt.mode, 'sig');
   assert.equal(opt.group, pl.sigGroup());
-  assert.deepEqual(opt.loose.map(m => m.id).sort(), ['agility', 'calm-mind', 'nasty-plot']);
-  const g = pl.fuse([buff('calm-mind')], opt.group);
+  assert.deepEqual(opt.loose.map(x => x.id).sort(), ['agility', 'calm-mind', 'confusion', 'nasty-plot']);
+  const g = pl.fuse([m('calm-mind')], opt.group);
   assert.equal(g, pl.sigGroup());
-  assert.deepEqual(g.map(m => m.id), ['sig-150', 'calm-mind']);
-  assert.equal(pl.bonds, 2);
+  assert.deepEqual(g.map(x => x.id), ['sig-150', 'calm-mind']);
+  assert.equal(pl.bonds, 3);
   assert.equal(pl.slots.length, 4, 'the buff left its normal slot (4 = confusion, 2 buffs, sig group)');
-  opt = pl.bondOptions();
-  assert.equal(opt.mode, 'sig');
-  pl.fuse([buff('nasty-plot')], opt.group);
-  assert.deepEqual(pl.sigGroup().map(m => m.id), ['sig-150', 'calm-mind', 'nasty-plot']);
+  pl.fuse([m('confusion')], pl.sigGroup());
+  pl.fuse([m('nasty-plot')], pl.sigGroup());
+  assert.deepEqual(pl.sigGroup().map(x => x.id), ['sig-150', 'calm-mind', 'confusion', 'nasty-plot']);
   assert.equal(pl.bonds, 1);
   assert.equal(pl.activeMove(), pl.sig, 'the group is led by the signature move');
-  assert.equal(pl.activeGroup().length, 3);
-  const third = pl.fuse([buff('agility')], pl.sigGroup());
-  assert.equal(third, null, 'a third buff is refused');
+  assert.equal(pl.activeGroup().length, 4);
+  assert.equal(pl.fuse([m('agility')], pl.sigGroup()), null, 'a fifth move is refused');
   assert.equal(pl.bonds, 1, 'and it costs nothing');
-  assert.equal(pl.sigGroup().length, 3);
+  assert.equal(pl.sigGroup().length, 4);
 });
 
-test('only buffs go into the signature group, and the signature move never goes into a normal group', () => {
+test('any loose move goes into the signature group, but the signature move never goes into a normal group', () => {
   const { pl } = sigPlayer();
   learn(pl, 'psybeam', 'calm-mind');
   pl.bonds = 5;
   const m = id => pl.moves.find(x => x.id === id);
-  assert.equal(pl.fuse([m('psybeam')], pl.sigGroup()), null, 'a normal move cannot join the signature group');
   assert.equal(pl.fuse([pl.sig, m('psybeam')]), null, 'the signature move cannot be paired with a normal one');
   assert.equal(pl.bonds, 5);
-  assert.equal(pl.sigGroup().length, 1);
-  assert.equal(pl.slots.filter(s => s.length === 1).length, 4, 'nothing moved');
+  assert.equal(pl.fuse([m('psybeam')], pl.sigGroup()).length, 2, 'an attack joins the signature group');
+  assert.equal(pl.bonds, 4);
+  assert.equal(pl.slots.filter(s => s.length === 1).length, 2);
 });
 
-test('without loose buffs there is no signature option, and normal groups behave as before', () => {
+test('normal groups behave as before, as the alternative to the signature group', () => {
   const { pl } = sigPlayer();
   learn(pl, 'psybeam', 'psychic');
   pl.bonds = 4;
   let opt = pl.bondOptions();
+  assert.equal(opt.mode, 'sig');
+  opt = opt.alt;                                   // los grupos normales siguen ahí, como alternativa
   assert.equal(opt.mode, 'pair');
   assert.ok(opt.loose.every(m => m !== pl.sig), 'the signature move is never offered to pair');
   const m = id => pl.moves.find(x => x.id === id);
   const g = pl.fuse([m('confusion'), m('psybeam')]);
   assert.equal(g.length, 2);
-  opt = pl.bondOptions();
+  opt = pl.bondOptions().alt;
   assert.equal(opt.mode, 'add');
   assert.deepEqual(opt.loose.map(x => x.id), ['psychic']);
   pl.fuse([m('psychic')], opt.group);
@@ -229,7 +229,7 @@ test('without loose buffs there is no signature option, and normal groups behave
   learn(pl, 'psycho-cut');
   pl.fuse([m('psycho-cut')], opt.group);
   assert.equal(opt.group.length, 4);
-  assert.equal(pl.bondOptions(), null, 'full group, no loose moves, no buffs');
+  assert.equal(pl.bondOptions(), null, 'full group, no loose moves');
 });
 
 test('a full signature group falls back to the normal options', () => {
@@ -239,9 +239,11 @@ test('a full signature group falls back to the normal options', () => {
   const m = id => pl.moves.find(x => x.id === id);
   pl.fuse([m('calm-mind')], pl.sigGroup());
   pl.fuse([m('nasty-plot')], pl.sigGroup());
+  pl.fuse([m('psybeam')], pl.sigGroup());
+  learn(pl, 'psychic');
   const opt = pl.bondOptions();
   assert.equal(opt.mode, 'pair');
-  assert.deepEqual(opt.loose.map(x => x.id).sort(), ['confusion', 'psybeam']);
+  assert.deepEqual(opt.loose.map(x => x.id).sort(), ['confusion', 'psychic']);
 });
 
 test('with room in the signature group and in a normal group the player is offered both (opt.alt)', () => {

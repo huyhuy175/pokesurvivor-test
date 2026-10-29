@@ -7,6 +7,11 @@
  * (sin traducir a fr/it/pt/zh); las novedades ya enseñan el inglés cuando falta la traducción.
  */
 G.CHANGELOG = [
+  { d: '2026-10-30', title: ['Gacha con Pokémon al máximo', 'Gacha with maxed Pokémon'], chg: [
+    ["Un Pokémon con 10★ (15 repetidos) ya no sale en su banner. Si todo el banner está al máximo, cada tirada se convierte en Pokémonedas, y las Épicas y Legendarias en Gemas (3 y 10).", "A Pokémon at 10★ (15 duplicates) no longer comes out of its banner. If the whole banner is maxed, each pull turns into PokéCoins, and Epic and Legendary pulls into Gems (3 and 10)."],
+    ["El movimiento especial de tu Pokémon ahora se fusiona con un vínculo como cualquier otro grupo: admite cualquier movimiento suelto (no sólo potenciadores), hasta 4 a la vez.", "Your Pokémon's special move now fuses with a bond like any other group: it accepts any loose move (not just buffs), up to 4 at once."],
+    ["La ficha de cada Pokémon muestra ahora qué da cada estrella de Rank (de 1★ a 10★), con las conseguidas resaltadas.", "Each Pokémon's sheet now shows what every Rank star gives (1★ to 10★), with the ones you have highlighted."]
+  ] },
   { d: '2026-10-29', title: ['Vietnamita', 'Vietnamese'], new: [
     ["Nuevo idioma: vietnamita (Tiếng Việt). Se elige en Ajustes > Gráficos > Idioma (el juego se recarga) y se activa solo si tu navegador está en vietnamita.", "New language: Vietnamese (Tiếng Việt). Pick it in Settings > Graphics > Language (the game reloads); it is used automatically if your browser is set to Vietnamese."],
     ["Nuevo botón Modes en el menú. Wave: oleadas infinitas con un objetivo opcional en cada una (hacer X bajas, ser rápido, rescatar a un Pokémon, encender farolillos, escoltar a un Pokémon perdido…), un jefe cada 5 oleadas y un legendario Apex cada 25. Premios: monedas, Fragmentos, Gemas y a veces material Mega.", "New Modes button in the menu. Wave: endless waves with an optional objective in each one (defeat enemies, be fast, rescue a Pokémon, light the lamps, escort a lost Pokémon…), a boss every 5 waves and an Apex legendary every 25. Rewards: coins, Shards, Gems and sometimes a Mega Material.", 'en-only'],

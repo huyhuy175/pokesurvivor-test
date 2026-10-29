@@ -242,6 +242,12 @@ label { display: block; font-size: 14px; color: var(--muted); margin: 8px 0 4px;
 .mon-extra .mx-row .btn + .btn { margin-left: 0; }
 .mon-extra .mx-desc { margin: 0 0 6px; font-size: 13px; }
 .mon-extra .mx-locked { opacity: .5; filter: grayscale(1); }
+.mon-extra .mx-perks { margin: 2px 0 6px; }
+.mon-extra .mx-perks summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+.mon-extra .mx-star { margin: 2px 0; font-size: 13px; }
+.mon-extra .mx-star > span:first-child { min-width: 34px; color: #ffd23f; }
+.mon-extra .mx-star small { color: inherit; }
+.mon-extra .mx-off { opacity: .5; filter: grayscale(1); }
 .mon-extra .ban-picker { margin-top: 6px; }
 .type {
   display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;

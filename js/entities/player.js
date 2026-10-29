@@ -381,23 +381,21 @@ G.Player = class Player {
   // solo hueco y se lanzan a la vez. Sólo crece un grupo (hasta BOND_MAX); si
   // no hay ninguno a medias, el vínculo une dos movimientos sueltos.
   static get BOND_MAX() { return 4; }
-  // El movimiento especial de la especie (hueco 5) se fusiona sólo con potenciadores, hasta SIG_BUFFS; nunca con otro ataque.
-  static get SIG_BUFFS() { return 2; }
+  // El movimiento especial de la especie (hueco 5) se fusiona como un grupo normal: con cualquier movimiento suelto, hasta BOND_MAX.
 
   /**
-   * Lo que se puede hacer ahora con un vínculo: sumar un potenciador al movimiento especial (mientras le quepan),
+   * Lo que se puede hacer ahora con un vínculo: sumar un movimiento suelto al movimiento especial (mientras le quepan),
    * añadir a un grupo o unir dos sueltos. Si caben las dos cosas, la primera lleva en `alt` la opción de los grupos
    * normales y quien juega elige (antes el especial tapaba siempre a los grupos).
    */
   bondOptions() {
     const sigG = this.sigGroup(), plain = this.slots.filter(s => s !== sigG);
     const loose = plain.filter(s => s.length === 1).map(s => s[0]);
-    const buffs = loose.filter(m => m.kind === 'buff');
     const grow = plain.find(s => s.length > 1 && s.length < Player.BOND_MAX);
     const normal = grow ? (loose.length ? { mode: 'add', group: grow, loose } : null)
       : loose.length >= 2 ? { mode: 'pair', group: null, loose } : null;
-    if (sigG && sigG.length - 1 < Player.SIG_BUFFS && buffs.length) {
-      const o = { mode: 'sig', group: sigG, loose: buffs };
+    if (sigG && sigG.length < Player.BOND_MAX && loose.length) {
+      const o = { mode: 'sig', group: sigG, loose };
       if (normal) o.alt = normal;
       return o;
     }
@@ -408,8 +406,8 @@ G.Player = class Player {
   fuse(moves, group = null) {
     const sigG = this.sigGroup();
     if (group && group === sigG) {
-      // Al especial sólo se le suman potenciadores, hasta SIG_BUFFS; si no encaja no se gasta el vínculo.
-      if (!moves.length || !moves.every(m => m.kind === 'buff' && !group.includes(m)) || group.length - 1 + moves.length > Player.SIG_BUFFS) return null;
+      // Al especial se le suman movimientos sueltos como a cualquier grupo, hasta BOND_MAX; si no encaja no se gasta el vínculo.
+      if (!moves.length || !moves.every(m => !group.includes(m)) || group.length + moves.length > Player.BOND_MAX) return null;
     } else if (sigG && moves.includes(this.sig)) return null;
     const target = group || this.slots.find(s => s[0] === moves[0]);
     const cur = this.slots[this.active];

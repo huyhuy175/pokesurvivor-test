@@ -50,6 +50,15 @@ G.Rank = (() => {
     return { stars, dupes, next, missing: next == null ? 0 : next - dupes };
   }
 
+  /** Lo que da cada estrella (1..10), como textos para la ficha. Debe ir a la par con bonus(). */
+  const EXTRA_PERKS = { 3: ['Unlocks the Unique passive'], 5: ['Unlocks the Signature move'], 6: ['Common passive ×1.2'],
+    8: ['Unique passive ×1.25'], 10: ['Common and Unique passives ×1.5'] };
+  function perks(star) {
+    const out = [], v = STAT_BONUS[star - 1];
+    if (v) out.push(`+${+(v * 100).toFixed(1)}% damage and HP`);
+    return out.concat(EXTRA_PERKS[star] || []);
+  }
+
   /** Bonus permanente: ×1 si no tiene estrellas. */
   function bonus(dex) {
     const stars = starsOf(dex);
@@ -71,5 +80,5 @@ G.Rank = (() => {
     return perks;
   }
 
-  return { MAX_DUPES, THRESHOLDS, root, starsFor, dupesOf, starsOf, progress, add, bonus, apply };
+  return { MAX_DUPES, THRESHOLDS, root, starsFor, dupesOf, starsOf, progress, perks, add, bonus, apply };
 })();

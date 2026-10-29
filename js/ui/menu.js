@@ -418,6 +418,14 @@ G.MenuUI = (() => {
     return h;
   }
 
+  /** Qué da cada estrella (1..10): las ya conseguidas, resaltadas; las demás, en gris. */
+  function perksHtml(dex) {
+    const have = G.Rank.progress(dex).stars;
+    const rows = G.Rank.THRESHOLDS.map((_, i) => i + 1).map(s =>
+      `<div class="mx-row mx-star${s > have ? ' mx-off' : ''}"><span>${s}★</span>${G.Rank.perks(s).map(t => `<small>${t}</small>`).join('')}</div>`).join('');
+    return `<details class="mx-perks"><summary>Rank bonuses</summary>${rows}</details>`;
+  }
+
   function monExtras(dex) {
     const n = G.Mons.natureOf(dex);
     const taught = G.Mons.taught(dex);
@@ -428,6 +436,7 @@ G.MenuUI = (() => {
       <div class="mx-row"><span>Naturaleza</span><b translate="no">${G.Mons.natureName(n)}</b><small>${natLine(n)}</small>
         ${btn('nat', 'mint', 'Menta', G.Shop.count('mint'))}</div>
       ${rankHtml(dex)}
+      ${perksHtml(dex)}
       <div class="mx-row"><span>MT</span>${taught.length
         ? `<span class="move-icons">${taught.map(id => `<span title="${G.T(G.Moves.BY_ID[id].name, 'move')}">${G.Icons.html('move:' + id, 16)}</span>`).join('')}</span>`
         : `<small>${G.T('Aún no ha aprendido ninguna')}</small>`}

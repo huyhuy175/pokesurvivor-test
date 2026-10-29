@@ -156,15 +156,22 @@ test('gacha: new mon has star 0 and no dupes; duplicates raise Rank without coin
   assert.equal(G.DB.save.coins, 0);
 });
 
-test('gacha: the 16th duplicate refunds coins and keeps dupes at 15', () => {
+test('gacha: a 10-star mon no longer drops; an exhausted banner pays coins, or gems for Epic/Legendary', () => {
   const G = gachaWorld();
   G.DB.save.dupes = { 4: 14 };
+  G.DB.save.owned[4] = { at: 1 };
   const { out, mon } = pullOne(G, 4, false);
   assert.equal(G.Rank.dupesOf(4), 15);
-  const refunds = out.filter(r => r.refund > 0);
-  assert.ok(refunds.length >= 1);
-  assert.ok(refunds.every(r => r.refund === G.Gacha.REFUND[r.rarity] && r.star === 0));
-  assert.equal(G.DB.save.coins, refunds.length * G.Gacha.REFUND[mon.rarity]);
+  assert.equal(out.filter(r => r.dex === 4).length, 1);          // sólo la que lo llevó a 15
+  const conv = out.filter(r => r.converted);
+  assert.equal(conv.length, 9);
+  assert.ok(conv.every(r => r.dex === 0 && r.star === 0 && !r.isNew));
+  const gemRows = conv.filter(r => r.rarity >= 4), coinRows = conv.filter(r => r.rarity < 4);
+  assert.ok(gemRows.every(r => r.gems === G.Gacha.GEM_REFUND[r.rarity] && r.refund === 0));
+  assert.ok(coinRows.every(r => r.gems === 0 && r.refund === G.Gacha.REFUND[r.rarity]));
+  assert.equal(G.DB.save.coins, coinRows.reduce((a, r) => a + r.refund, 0));
+  assert.equal(G.DB.save.gems || 0, gemRows.reduce((a, r) => a + r.gems, 0));
+  assert.equal(G.Rank.dupesOf(4), 15);
 });
 
 test('gacha: with the shiny already owned the pull falls back to a normal duplicate', () => {
