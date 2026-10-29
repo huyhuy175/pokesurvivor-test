@@ -23,7 +23,7 @@ G.Shop = (() => {
   const MAT_PRICE = 600;
   if (G.MegaMats) {
     for (const t of G.MegaMats.TYPES) {
-      ITEMS[G.MegaMats.id(t)] = { name: G.MegaMats.name(t), icon: 'evostone', price: MAT_PRICE,
+      ITEMS[G.MegaMats.id(t)] = { get name() { return G.MegaMats.name(t); }, icon: 'evostone', price: MAT_PRICE,
                                   desc: 'Used to unlock Mega Evolutions in the Forge.' };
     }
   }

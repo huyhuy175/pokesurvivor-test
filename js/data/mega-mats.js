@@ -11,7 +11,7 @@ G.MegaMats = (() => {
 
   const id = type => 'mat' + type;
   const typeOf = matId => TYPES.find(t => id(t) === matId) || null;
-  const name = type => cap(type) + ' Core';
+  const name = type => G.I18n ? G.I18n.f('{x} Core', G.T(G.U.TYPE_NAME[type])) : cap(type) + ' Core';
   const color = type => (G.U.TYPE_COLOR && G.U.TYPE_COLOR[type]) || '#ffffff';
   // Icono: una gema de 12x12 píxeles con las luces y sombras sacadas del color del tipo.
   // o contorno · L brillo · l claro · m color del tipo · d sombra · w destello

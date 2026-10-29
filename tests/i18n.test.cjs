@@ -25,21 +25,54 @@ function boot(saved = null, nav = 'es-ES', pathname = '/', blocked = false) {
   vm.createContext(ctx);
   const load = f => vm.runInContext(source(f), ctx, { filename: f });
   load('js/core/locales.js');
+  if (ctx.PS_LOCALES.lang !== 'en') load(`js/lang/${ctx.PS_LOCALES.lang}.js`);   // dictionary the page would request
   load('js/core/i18n.js');
   dictionaries.forEach(load);
   return { ctx, G: ctx.G, storage, calls, Canvas, load, written };
 }
 
-test('English is the only language, whatever the browser or saved preference says', () => {
-  for (const [saved, nav, pathname] of [[null, 'es-MX', '/'], [null, 'fr-FR', '/'], ['es', 'es-ES', '/'], ['zh-Hant', 'zh-TW', '/'],
-    ['unknown', 'it-IT', '/en/'], [null, 'vi-VN', '/']]) {
-    const b = boot(saved, nav, pathname);
-    assert.equal(b.G.I18n.lang, 'en', `${saved}/${nav}`);
-    assert.equal(b.ctx.document.documentElement.lang, 'en');
-    assert.deepEqual(Array.from(b.G.I18n.choices, c => c[0]), ['en']);
-    assert.equal(b.written.length, 0);          // no extra dictionary is downloaded
+test('language: English by default, Vietnamese when saved or when the browser is Vietnamese', () => {
+  for (const [saved, nav, want] of [[null, 'es-MX', 'en'], [null, 'fr-FR', 'en'], ['es', 'es-ES', 'en'], ['zh-Hant', 'zh-TW', 'en'],
+    ['unknown', 'it-IT', 'en'], [null, 'vi-VN', 'vi'], ['vi', 'en-US', 'vi'], ['en', 'vi-VN', 'en']]) {
+    const b = boot(saved, nav);
+    assert.equal(b.G.I18n.lang, want, `${saved}/${nav}`);
+    assert.equal(b.ctx.document.documentElement.lang, want);
+    assert.deepEqual(Array.from(b.G.I18n.choices, c => c[0]), ['en', 'vi']);
+    assert.equal(b.written.length, want === 'en' ? 0 : 1);   // only Vietnamese downloads an extra dictionary
   }
   assert.equal(boot(null, 'es-ES', '/', true).G.I18n.lang, 'en');   // blocked storage
+});
+
+test('Vietnamese covers every English key with the same placeholders', () => {
+  const en = boot().G.I18n, vi = boot('vi').G.I18n;
+  const keys = [];
+  const probe = { I18n: { add: d => keys.push(...Object.keys(d)) } };
+  for (const f of dictionaries) vm.runInNewContext(source(f), { G: probe });
+  assert.ok(keys.length > 1000);
+  const slots = s => (String(s).match(/\{(?:x|name)\}/g) || []).length;
+  for (const k of keys) {
+    if (/\{(?:x|name)\}/.test(k)) assert.equal(slots(vi.t(k)), slots(k), k);
+  }
+  assert.equal(vi.t('Guardar'), 'Lưu');
+  assert.equal(vi.t('Volver'), 'Quay lại');
+  assert.ok(vi.f('Esperando a {x}…', 'Pikachu').includes('Pikachu'));
+  assert.equal(en.t('Guardar'), 'Save');
+});
+
+test('Vietnamese translates texts the code writes in English, sentence by sentence', () => {
+  const vi = boot('vi').G.I18n;
+  assert.equal(vi.t('Rank'), 'Hạng');
+  assert.equal(vi.t('3 more duplicates to the next star'), 'Cần thêm 3 bản trùng để lên sao tiếp theo');
+  assert.equal(vi.t('Unlocks at 5★ · on Charizard'), 'Mở khóa ở 5★ · trên Charizard');
+  assert.equal(vi.t('Lv 3 / 30'), 'Cấp 3 / 30');
+  assert.equal(vi.t('+15% damage with Lửa moves. +30% damage when below 1/3 health.'),
+    '+15% sát thương với chiêu hệ Lửa. +30% sát thương khi dưới 1/3 máu.');
+  assert.equal(vi.t('A wide blast in front of you. Burns foes (2 stacks).'), 'Vụ nổ rộng ngay phía trước bạn. Thiêu đốt kẻ địch (2 lớp).');
+  assert.equal(vi.tc('Timid', 'nature'), 'Nhút nhát');
+  assert.equal(vi.tc('Blazing Heart', 'passive'), 'Trái tim rực lửa');
+  assert.equal(vi.tc('Tail Flame Fury', 'passive'), 'Tail Flame Fury');   // unique names stay in English
+  assert.equal(vi.t('Normal'), 'Thường');
+  assert.equal(boot().G.I18n.tc('Timid', 'nature'), 'Timid');            // English keeps its own names
 });
 
 test('Spanish source keys are translated: exact, templates, canvas, alert/confirm', () => {

@@ -22,6 +22,7 @@
   var lang = (window.PS_LOCALES && window.PS_LOCALES.lang) || document.documentElement.lang || 'en';
   var texts = {
     en: ['This is not the official website', 'PokéSurvivor can only be played on its official website, free and without ads.', 'Play on pokesurvivor.com'],
+    vi: ['Đây không phải trang web chính thức', 'PokéSurvivor chỉ có thể chơi trên trang web chính thức, miễn phí và không có quảng cáo.', 'Chơi trên pokesurvivor.com'],
   };
   var copy = texts[lang] || texts.en;
 

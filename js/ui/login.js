@@ -92,7 +92,7 @@ G.LoginUI = (() => {
       const n = queue.shift();
       if (!n) { $('scr-savenote').classList.add('hidden'); return; }
       try { localStorage.setItem(n.key, '1'); } catch (e) { /* nada */ }
-      $('savenote-title').textContent = n.title[en];
+      $('savenote-title').textContent = en || G.I18n.lang === 'es' || G.I18n.has(n.title[0]) ? n.title[en] : n.title[1];
       // Otros idiomas: el aviso entero va traducido en su diccionario (por trozos sale raro); si falta, en inglés.
       const other = G.I18n.lang !== 'es' && !en, body = $('savenote-body');
       if (other) body.setAttribute('translate', 'no');

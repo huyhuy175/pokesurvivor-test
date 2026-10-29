@@ -150,7 +150,7 @@ G.GachaUI = (() => {
       const rk = r.isNew ? '' : `<div class="rank-stars">${G.UI.rankStars(G.Rank.starsOf(r.dex), 12)}</div>`;
       // Nuevo: con qué naturaleza y habilidad te ha tocado (la oculta, en dorado).
       const ab = r.isNew ? G.Mons.abilityOf(r.dex) : null;
-      const who = ab ? `<div class="pmon" translate="no">${G.Mons.name(G.Mons.natureOf(r.dex).n)} · <span>${ab.name}</span></div>` : '';
+      const who = ab ? `<div class="pmon" translate="no">${G.Mons.natureName(G.Mons.natureOf(r.dex))} · <span>${ab.name}</span></div>` : '';
       c.insertAdjacentHTML('beforeend', `<b>${r.shiny ? G.Icons.html('shiny', 12) + ' ' : ''}${mon.name}</b>${who}${rk}<div class="tag">${tag}</div>`);
       out.appendChild(c);
       if (skip) continue;
@@ -255,7 +255,7 @@ G.GachaUI = (() => {
     c.style.setProperty('--rc', G.Gacha.RARITY_COLOR[mon.rarity]);
     c.innerHTML = `<div class="stars">${G.UI.stars(mon.rarity, 24)}</div>`;
     c.appendChild(G.UI.spriteCanvas(dex, 132, 120, { lively: mon.rarity >= 4, scale: 2 }));
-    const who = ab ? `<div class="pmon" translate="no">${G.Mons.name(G.Mons.natureOf(dex).n)} · <span>${ab.name}</span></div>` : '';
+    const who = ab ? `<div class="pmon" translate="no">${G.Mons.natureName(G.Mons.natureOf(dex))} · <span>${ab.name}</span></div>` : '';
     c.insertAdjacentHTML('beforeend', `<b>${mon.name}</b>${who}<div class="tag"><span class="new">¡NUEVO!</span></div>`);
     const box = $('wish-pick-list');
     box.innerHTML = '';

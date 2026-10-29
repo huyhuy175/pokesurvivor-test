@@ -19,8 +19,10 @@
 G.Mons = (() => {
   const save = () => G.DB && G.DB.save;
 
-  /** Nombre en el idioma del juego: [es, en, fr, it, zh-Hans, zh-Hant] (pt-BR, el inglés). */
-  const LANG_I = { es: 0, en: 1, fr: 2, it: 3, 'pt-BR': 1, 'zh-Hans': 4, 'zh-Hant': 5 };
+  /** Nombre en el idioma del juego: [es, en, ...] (vietnamita: los nombres oficiales en inglés). */
+  const LANG_I = { es: 0, en: 1, vi: 1 };
+  /** Nombre de una naturaleza (en vietnamita, el suyo; si no, el inglés). */
+  const natureName = n => (G.I18n && G.I18n.tc) ? G.I18n.tc(name(n.n), 'nature') : name(n.n);
   function name(n) {
     if (!Array.isArray(n)) return String(n || '');
     return n[LANG_I[G.I18n ? G.I18n.lang : 'es'] || 0] || n[1] || n[0];
@@ -87,10 +89,12 @@ G.Mons = (() => {
         if (f) { sg = f; via = G.DEX_BY[n] && G.DEX_BY[n].name; break; }
       }
     }
+    const pn = s => (G.I18n && G.I18n.tc) ? G.I18n.tc(s, 'passive') : s;   // nombres: sólo los comunes tienen traducción
+    const T = s => G.T ? G.T(s) : s;
     return {
-      id: String(dex), name: fx.name || '', desc: fx.d, slot: 0,
-      unique: { name: u ? u.n : '', desc: u ? G.PassiveFX.build(u, mon).d : '', locked: !p.on },
-      sig: sg ? { name: sg.name, desc: sg.desc, rare: sg.rare, via, locked: !(G.Rank && G.Rank.starsOf(dex) >= 5) } : null
+      id: String(dex), name: pn(fx.name || ''), desc: T(fx.d || ''), slot: 0,
+      unique: { name: pn(u ? u.n : ''), desc: u ? T(G.PassiveFX.build(u, mon).d) : '', locked: !p.on },
+      sig: sg ? { name: sg.name, desc: T(sg.desc), rare: sg.rare, via, locked: !(G.Rank && G.Rank.starsOf(dex) >= 5) } : null
     };
   }
 
@@ -134,6 +138,6 @@ G.Mons = (() => {
     return out;
   }
 
-  return { name, natureOf, setNature, rolledNature, monFor, abilityOf, isBase, lineage,
+  return { name, natureName, natureOf, setNature, rolledNature, monFor, abilityOf, isBase, lineage,
            taught, learnable, canLearn, teach, natural };
 })();

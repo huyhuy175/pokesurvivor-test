@@ -424,7 +424,7 @@ G.MenuUI = (() => {
     const btn = (key, icon, label, count) => count > 0
       ? `<button class="btn small" data-extra="${key}">${G.Icons.html(icon, 14)} <span>${label}</span> <small>×${count}</small></button>` : '';
     return `<div class="mon-extra">
-      <div class="mx-row"><span>Naturaleza</span><b translate="no">${G.Mons.name(n.n)}</b><small>${natLine(n)}</small>
+      <div class="mx-row"><span>Naturaleza</span><b translate="no">${G.Mons.natureName(n)}</b><small>${natLine(n)}</small>
         ${btn('nat', 'mint', 'Menta', G.Shop.count('mint'))}</div>
       ${rankHtml(dex)}
       <div class="mx-row"><span>MT</span>${taught.length
@@ -449,7 +449,7 @@ G.MenuUI = (() => {
     const done = msg => { extraOpen = ''; G.DB.commit(); G.Audio.sfx('buy'); G.UI.toast(msg, 2600); showDetail(dex); };
     if (extraOpen === 'nat' && G.Shop.count('mint')) {
       const cur = G.Mons.natureOf(dex).id;
-      chips(G.NATURES.filter(n => n.id !== cur).map(n => ({ v: n.id, html: `<b translate="no">${G.Mons.name(n.n)}</b> <small>${natLine(n)}</small>` })), '', id => {
+      chips(G.NATURES.filter(n => n.id !== cur).map(n => ({ v: n.id, html: `<b translate="no">${G.Mons.natureName(n)}</b> <small>${natLine(n)}</small>` })), '', id => {
         if (!G.Shop.take('mint')) return;
         G.Mons.setNature(dex, id);
         done(G.I18n.f('{x} ahora tiene naturaleza {x}', mon.name, G.Mons.name(G.NATURE_BY[id].n)));

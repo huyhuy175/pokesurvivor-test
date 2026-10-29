@@ -13,7 +13,7 @@
  *   3. trozos dentro de un texto más largo, sólo palabras enteras
  * Lo que escriben los jugadores (apodos) va marcado con translate="no".
  *
- * El juego sólo sale en inglés (locales.js). add(dict, idioma, contexto) sólo carga el
+ * Idiomas: inglés y vietnamita (locales.js). add(dict, idioma, contexto) sólo carga el
  * idioma activo; el contexto 'move' distingue Psíquico (movimiento) de Psíquico (tipo).
  * Los IDs no se traducen. {name} conserva el apodo del jugador sin traducirlo; {x}
  * traduce su contenido.
@@ -82,6 +82,9 @@ G.I18n = (() => {
     return frag;
   }
 
+  // Diccionario del idioma, descargado aparte (ver locales.js).
+  for (const [d, l, c] of window.PS_LANG_Q || []) add(d, l, c);
+
   function keepCase(src, en) {
     if (src === src.toUpperCase() && /\p{L}/u.test(src)) return en.toUpperCase();
     return en;
@@ -110,18 +113,33 @@ G.I18n = (() => {
     const lead = m[1], tail = m[3], body = m[2].replace(/\s+/g, ' ');
     if (!body) return s;
     const upper = body === body.toUpperCase() && /\p{L}/u.test(body);
-    let r = whole(main, body, upper);
+    let r = whole(main, body, upper, true);          // frase exacta
+    if (r === undefined) r = sentences(body);        // varias frases, todas conocidas
+    if (r === undefined) r = whole(main, body, upper);
     if (r === undefined && fragRe()) {
       r = body.replace(frag, w => keepCase(w, fragMap.get(w.toLowerCase()) || w));
     }
     return lead + (r === undefined ? body : r) + tail;
   }
 
+  /** Texto de varias frases (una pasiva con dos efectos...): cada frase por su cuenta; undefined si alguna no está. */
+  function sentences(body) {
+    const parts = body.split(/(?<=[.!?])\s+/);
+    if (parts.length < 2) return undefined;
+    const out = [];
+    for (const p of parts) {
+      const r = whole(main, p, p === p.toUpperCase() && /\p{L}/u.test(p));
+      if (r === undefined) return undefined;
+      out.push(r);
+    }
+    return out.join(' ');
+  }
+
   /** Frase exacta o patrón con huecos de una capa (undefined si no está). */
-  function whole(ly, body, upper) {
+  function whole(ly, body, upper, exactOnly) {
     let r = ly.exact.get(body);
     if (r === undefined && upper) { const e = ly.exactLow.get(body.toLowerCase()); if (e !== undefined) r = keepCase(body, e); }
-    if (r !== undefined) return r;
+    if (r !== undefined || exactOnly) return r;
     for (const p of ly.patterns) {
       const mm = (upper ? p.reI : p.re).exec(body);
       if (!mm) continue;
@@ -133,6 +151,12 @@ G.I18n = (() => {
       return keepCase(body, r);
     }
     return undefined;
+  }
+
+  /** Nombre de un contexto (naturalezas, pasivas...): sólo coincidencia exacta; si no está, el texto tal cual. */
+  function tc(s, context) {
+    const c = contexts.get(context);
+    return c && Object.prototype.hasOwnProperty.call(c, s) ? c[s] : s;
   }
 
   /** Texto con huecos para el código: T('Nivel {x}', 5). */
@@ -172,7 +196,7 @@ G.I18n = (() => {
     if (lang === 'es') return;
     // Los enlaces a las páginas de la web, a su versión en inglés.
     const EN_LINKS = { 'guia/': 'en/guide/', 'pokedex/': 'en/pokedex/' };
-    document.querySelectorAll('a[href]').forEach(a => { const h = a.getAttribute('href'); if (lang === 'en' && EN_LINKS[h]) a.setAttribute('href', EN_LINKS[h]); });
+    document.querySelectorAll('a[href]').forEach(a => { const h = a.getAttribute('href'); if (lang !== 'es' && EN_LINKS[h]) a.setAttribute('href', EN_LINKS[h]); });
     walk(document.body);
     new MutationObserver(ms => {
       for (const m of ms) {
@@ -205,6 +229,6 @@ G.I18n = (() => {
 
   /** ¿Está traducido al idioma del jugador? (no cuenta la reserva en inglés) */
   const has = s => main.exact.has(s) || main.patterns.some(p => p.key === s.replace(/\{name\}/g, '{x}'));
-  return { choices, lang, locale, add, t, f, has, set, startDom, walk, rawCanvas };
+  return { choices, lang, locale, add, t, tc, f, has, set, startDom, walk, rawCanvas };
 })();
 G.T = G.I18n.t;

@@ -10,6 +10,7 @@ window.PS_PAGES = !!document.querySelector('meta[name="ps-pages"]');
   // El idioma lo elige locales.js (en el <head>).
   var copy = {
     en: ['A Pokémon survival game, free in your browser and on mobile.', 'Loading…'],
+    vi: ['Game sinh tồn Pokémon, miễn phí trên trình duyệt và điện thoại.', 'Đang tải…'],
   }[window.PS_LOCALES && window.PS_LOCALES.lang];
   if (!copy) return;
   var p = document.querySelectorAll('#boot p');

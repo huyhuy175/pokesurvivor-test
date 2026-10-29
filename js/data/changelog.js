@@ -7,6 +7,9 @@
  * (sin traducir a fr/it/pt/zh); las novedades ya enseñan el inglés cuando falta la traducción.
  */
 G.CHANGELOG = [
+  { d: '2026-10-29', title: ['Vietnamita', 'Vietnamese'], new: [
+    ["Nuevo idioma: vietnamita (Tiếng Việt). Se elige en Ajustes > Gráficos > Idioma (el juego se recarga) y se activa solo si tu navegador está en vietnamita.", "New language: Vietnamese (Tiếng Việt). Pick it in Settings > Graphics > Language (the game reloads); it is used automatically if your browser is set to Vietnamese."]
+  ] },
   { d: '2026-10-28', title: ['Forja Evolutiva y Fragmentos Evolutivos', 'Evolution Forge and Evolution Shards'], new: [
     ["40 Megaevoluciones ya tienen sprite propio dibujado (Mega Charizard X, Gengar, Gardevoir, Rayquaza, Lucario y más). Las demás se ven con su forma base y un aura rosa.",
      "40 Mega Evolutions now have their own hand-drawn sprite (Mega Charizard X, Gengar, Gardevoir, Rayquaza, Lucario and more). The rest show their base form with a pink aura."],

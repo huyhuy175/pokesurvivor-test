@@ -77,8 +77,8 @@
   ]
 }
 </script>
-<link rel="stylesheet" href="css/style.css?v=a1892fed2d">
-<script src="js/core/locales.js?v=7a1227699d"></script>
+<link rel="stylesheet" href="css/style.css?v=d7044600c3">
+<script src="js/core/locales.js?v=02f160a55a"></script>
 <script src="js/noframe.js"></script>
 </head>
 <body>
@@ -544,6 +544,10 @@
           <button id="pull-100" class="btn gold grow" data-sfx="none">Tirar ×100 · <span id="cost-100"></span></button>
           <button id="pull-100b" class="btn gold grow" data-sfx="none">Tirar ×100 · <span id="cost-100b"></span></button>
         </div>
+        <label class="note" style="display:flex;align-items:center;gap:8px;margin-top:8px">
+          <input type="checkbox" id="wish-sure" disabled>
+          <span>Use Guarantee Ticket <b class="gold" id="wish-sure-n"></b> <small>(×10 only: the last pull is a Pokémon you don't have)</small></span>
+        </label>
         <p class="note tickets-line" id="gacha-tickets"></p>
         <p class="note" id="gacha-pity"></p>
       </div>
@@ -557,6 +561,13 @@
   <div class="pull-results" id="pull-results"></div>
   <button id="pull-skip" class="btn small ghost hidden">Saltar</button>
   <button id="pull-close" class="btn gold hidden">Continuar</button>
+</div>
+
+<div id="wish-pick" class="hidden">
+  <h2 id="wish-pick-title"></h2>
+  <p class="sub" id="wish-pick-sub"></p>
+  <div class="pull-results" id="wish-pick-list"></div>
+  <button id="wish-close" class="btn gold">Close</button>
 </div>
 
 <!-- ====== Durante la run ====== -->
@@ -615,6 +626,6 @@
 </section>
 
 <!-- datos generados -->
-<script defer src="js/app.min.js?v=6e9278830c"></script>
+<script defer src="js/app.min.js?v=d17871a375"></script>
 </body>
 </html>
