@@ -37,3 +37,8 @@ test('HUD draws the mode line and the HARDCORE badge', () => {
   assert.match(h, /G\.Modes\.hudLine\(\)/);
   assert.match(h, /HARDCORE/);
 });
+
+test('every screen section of the Modes menu is in the UI screen list, so show/hideAll/Escape handle it', () => {
+  assert.match(source('js/ui/ui.js'), /SCREENS = \[[^\]]*'scr-modes'/);
+  assert.match(source('js/game.js'), /\['scr-dex'[^\]]*'scr-modes'/);
+});
