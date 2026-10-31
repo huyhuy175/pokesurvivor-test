@@ -124,7 +124,9 @@ G.Game = (() => {
     G.Path.clear();
     G.Hazards.clear();
     G.World.reset(coop ? coop.seed : Math.floor(Math.random() * 1e6));
-    G.World.setBiome(0, true);
+    // Cadena de mapas de la run: sale de la semilla (en cooperativo, la misma en todos).
+    G.World.setBiome(G.Skins.biomeAt(G.World.seed, 0), true);
+    G.Skins.preloadNext(G.World.seed, 0);
     biome = 0;
     time = 0; pendingLevels = 0;
     runReal = performance.now(); tampered = false;
@@ -729,7 +731,8 @@ G.Game = (() => {
     const b = Math.floor(time / 240);
     if (b !== biome && !G.Rift.inArena && !G.Judgment.active) {
       biome = b;
-      G.World.setBiome(b);
+      G.World.setBiome(G.Skins.biomeAt(G.World.seed, b));
+      G.Skins.preloadNext(G.World.seed, b);
       G.Audio.sfx('biome');
       G.Spawner.say('— ' + G.World.biomeName() + ' —', 3);
       G.FX.ring(pl.x, pl.y, 10, G.Camera.outerRadius(), '#ffffff', 0.7, 6);
@@ -912,12 +915,14 @@ G.Game = (() => {
    * Así el menú enseña desde el primer segundo cómo se ve el juego.
    */
   const Backdrop = (() => {
-    let wanderers = [], t = 0, ready = false, biomeT = 0, bi = 0;
+    let wanderers = [], t = 0, ready = false, biomeT = 0, bi = 0, menuSeed = 0;
     const CAST = [1, 4, 7, 25, 133, 52, 39, 35, 16, 43, 60, 69, 74, 92, 129, 147, 113, 143, 54, 79];
 
     function init() {
       G.World.reset(4242);
-      G.World.setBiome(0, true);
+      menuSeed = Math.floor(Math.random() * 1e6);       // cadena de mapas del fondo del menú
+      G.World.setBiome(G.Skins.biomeAt(menuSeed, 0), true);
+      G.Skins.preloadNext(menuSeed, 0);
       G.Camera.x = 0; G.Camera.y = 0;
       wanderers = CAST.map(dex => spawn(dex, true));
       ready = true;
@@ -947,7 +952,7 @@ G.Game = (() => {
       G.Camera.follow(G.Camera.x, G.Camera.y, dt);
 
       biomeT += dt;
-      if (biomeT > 30) { biomeT = 0; bi = (bi + 1) % 3; G.World.setBiome(bi); }
+      if (biomeT > 30) { biomeT = 0; bi++; G.World.setBiome(G.Skins.biomeAt(menuSeed, bi)); G.Skins.preloadNext(menuSeed, bi); }
 
       for (const wd of wanderers) {
         wd.t -= dt;
@@ -990,7 +995,7 @@ G.Game = (() => {
     /** Al volver de una run, recupera el mundo del menú. */
     function restore() {
       G.World.reset(4242);
-      G.World.setBiome(bi, true);
+      G.World.setBiome(G.Skins.biomeAt(menuSeed, bi), true);
       G.FX.clear(); G.Projectiles.clear(); G.Combat.clearFields(); G.EnemyMgr.clear(); G.Pickups.clear();
       wanderers = CAST.map(dex => spawn(dex, true));
     }

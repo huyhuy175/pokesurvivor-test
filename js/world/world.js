@@ -501,7 +501,8 @@ G.World = (() => {
                   : p.type === 'spring' ? (p.charge < 0.15 ? 1 : 0)
                   : p.type === 'trap' ? p.kind : 0;
     const img = G.Tiles.propSprite(biome, p.type, variant);
-    const w = img.width * P, h = img.height * P;
+    const ps = img.px || P;                  // los recortes de atlas ya vienen a escala de mundo (px = 1)
+    const w = img.width * ps, h = img.height * ps;
     if (p.flat) {
       // Planos (manantial, trampa): pegados al suelo, centrados en su casilla.
       ctx.drawImage(img, Math.round(p.x - w / 2), Math.round(p.y - 8 - h / 2), w, h);
@@ -538,7 +539,8 @@ G.World = (() => {
       // El objeto viejo se desvanece mientras aparece el nuevo.
       const old = G.Tiles.propSprite(fade.from, p.type, variant);
       ctx.globalAlpha = 1 - k;
-      ctx.drawImage(old, Math.round(p.x - old.width * P / 2), Math.round(p.y - old.height * P + (p.type === 'grass' ? 4 : 2)), old.width * P, old.height * P);
+      const os = old.px || P;
+      ctx.drawImage(old, Math.round(p.x - old.width * os / 2), Math.round(p.y - old.height * os + (p.type === 'grass' ? 4 : 2)), old.width * os, old.height * os);
       ctx.globalAlpha = k;
     }
     ctx.drawImage(img, x, y, w, h);
@@ -576,6 +578,10 @@ G.World = (() => {
     fade = instant ? null : { from: biome, images, t: 0 };
     biome = b;
     images = new Map();
+    // Biomas con tileset: al terminar de cargar el atlas se repintan los chunks
+    // (hasta entonces se ve el bioma de código, nunca pantalla negra).
+    const skin = G.Tiles.BIOMES[b].skin;
+    if (skin && G.Skins) G.Skins.load(skin, () => { if (biome === b) images = new Map(); });
   }
 
   function biomeName() { return G.Tiles.BIOMES[biome].name; }
@@ -607,6 +613,7 @@ G.World = (() => {
       }
     },
     get arena() { return arena; }, drawGround, drawLiquid, visibleProps, drawProp, drawVignette,
-    get biome() { return biome; }
+    get biome() { return biome; },
+    get seed() { return seed; }
   };
 })();

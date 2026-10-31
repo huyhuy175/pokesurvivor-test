@@ -136,6 +136,17 @@ G.Tiles = (() => {
   for (const t of ARENA_TYPES) BIOMES.push(arenaBiome(ARENA_THEMES[t]));
   BIOMES[ARENA + ARENA_TYPES.indexOf('judgment')].name = ARENA_THEMES.judgment.name;
 
+  // Biomas con tileset (js/data/tilesets.js, js/world/skins.js): la paleta de código
+  // sirve de respaldo y para las partículas; los props de código usan estos colores.
+  const SKIN0 = BIOMES.length;
+  for (const t of (G.Tilesets || [])) {
+    const p = t.palette;
+    const b = arenaBiome({ name: t.name, floor: p.floor, wall: p.wall, liq: p.liq, foam: p.foam, liquid: t.liquid, prop: 'tree',
+                           leaf: p.leaf, trunk: p.trunk, rock: p.rock, grass: p.grass, flowers: p.flowers });
+    b.name = t.name; b.skin = t.id;
+    BIOMES.push(b);
+  }
+
   // ---------------- utilidades de color / píxel ----------------
 
   function rgb(hex) {
@@ -206,6 +217,7 @@ G.Tiles = (() => {
 
   function paintChunk(cx, cy, n, at, dirtField, bi, seed = 0) {
     const B = BIOMES[bi];
+    if (B.skin && G.Skins && G.Skins.ready(B.skin)) return G.Skins.paintChunk(cx, cy, n, at, dirtField, B, seed);
     const P = Pix(n * T, n * T);
     const C = {};
     for (const k of ['floor', 'dirt', 'wallTop', 'wallFace', 'flowers', 'grass'])
@@ -360,6 +372,8 @@ G.Tiles = (() => {
   const propCache = new Map();          // "bioma/tipo/variante" -> canvas
 
   function propSprite(bi, type, variant = 0) {
+    const sk = BIOMES[bi].skin;
+    if (sk && G.Skins) { const cv = G.Skins.propSprite(sk, type); if (cv) return cv; }
     const k = bi + '/' + type + '/' + variant;
     let cv = propCache.get(k);
     if (!cv) { cv = PAINT[type](BIOMES[bi], variant); propCache.set(k, cv); }
@@ -626,7 +640,7 @@ G.Tiles = (() => {
 
   function clearProps() { propCache.clear(); }
 
-  return { T, BIOMES, NORMAL, ARENA, ARENA_THEMES, ARENA_TYPES, paintChunk, propSprite, clearProps,
+  return { T, BIOMES, NORMAL, ARENA, SKIN0, ARENA_THEMES, ARENA_TYPES, paintChunk, propSprite, clearProps,
            /** Índice de bioma de la arena de un tipo. */
            arenaBiome: type => ARENA + Math.max(0, ARENA_TYPES.indexOf(type)) };
 })();

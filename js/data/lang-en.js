@@ -159,6 +159,17 @@ G.I18n.add({
   'Cantera Antigua': 'Ancient Quarry', 'Cementerio Sombrío': 'Gloomy Graveyard', 'Santuario Dragón': 'Dragon Sanctuary',
   'Callejón Oscuro': 'Dark Alley', 'Fortaleza de Acero': 'Steel Fortress', 'Bosque Encantado': 'Enchanted Forest',
   'Bosque Umbrío': 'Shady Forest', 'Cueva Cristal': 'Crystal Cave', 'Volcán Ceniza': 'Ash Volcano',
+  // Mapas con tileset (js/data/tilesets.js)
+  'Pradera de Flores': 'Flower Meadow',
+  'Bosque Otoñal': 'Autumn Forest',
+  'Bosque de Hadas': 'Fairy Forest',
+  'Pradera Lunar': 'Moonlit Meadow',
+  'Cueva de Cristales': 'Crystal Grotto',
+  'Tundra Helada': 'Frozen Tundra',
+  'Cañón de Roca Roja': 'Red Rock Canyon',
+  'Pantano Maldito': 'Cursed Swamp',
+  'Zona Volcánica': 'Volcanic Zone',
+  'Islas Celestes': 'Sky Islands',
   'Grieta · {x}': 'Rift · {x}', 'Grieta ·': 'Rift ·', 'GRIETA ·': 'RIFT ·',
 
   // ---------------- avisos durante la partida ----------------

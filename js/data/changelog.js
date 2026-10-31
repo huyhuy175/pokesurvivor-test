@@ -7,6 +7,9 @@
  * (sin traducir a fr/it/pt/zh); las novedades ya enseñan el inglés cuando falta la traducción.
  */
 G.CHANGELOG = [
+  { d: '2026-10-31', title: ['Mapas aleatorios', 'Random maps'], new: [
+    ["Cada partida empieza en un mapa distinto y el escenario cambia cada 4 minutos entre 10 temas nuevos: pradera de flores, bosque otoñal, bosque de hadas, pradera lunar, cueva de cristales, tundra helada, cañón de roca roja, pantano maldito, zona volcánica e islas celestes. En cooperativo todos ven el mismo mapa.", "Every run starts on a different map and the scenery changes every 4 minutes between 10 new themes: flower meadow, autumn forest, fairy forest, moonlit meadow, crystal grotto, frozen tundra, red rock canyon, cursed swamp, volcanic zone and sky islands. In co-op everyone sees the same map."]
+  ] },
   { d: '2026-10-30', title: ['Gacha con Pokémon al máximo', 'Gacha with maxed Pokémon'], chg: [
     ["Un Pokémon con 10★ (15 repetidos) ya no sale en su banner. Si todo el banner está al máximo, cada tirada se convierte en Pokémonedas, y las Épicas y Legendarias en Gemas (3 y 10).", "A Pokémon at 10★ (15 duplicates) no longer comes out of its banner. If the whole banner is maxed, each pull turns into PokéCoins, and Epic and Legendary pulls into Gems (3 and 10)."],
     ["El movimiento especial de tu Pokémon ahora se fusiona con un vínculo como cualquier otro grupo: admite cualquier movimiento suelto (no sólo potenciadores), hasta 4 a la vez.", "Your Pokémon's special move now fuses with a bond like any other group: it accepts any loose move (not just buffs), up to 4 at once."],

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vista previa de tilesets</title>
+<style>
+  body { margin: 0; background: #1b1b22; color: #ddd; font: 13px system-ui, sans-serif; }
+  h1 { font-size: 15px; margin: 10px 12px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 10px; padding: 0 12px 12px; }
+  .pack { background: #26262f; padding: 6px; border-radius: 6px; }
+  .pack b { display: block; margin-bottom: 4px; }
+  canvas { display: block; image-rendering: pixelated; }
+</style></head><body>
+<h1>Tilesets de mapa (js/world/skins.js: pintado real) · se genera con tools/make_tilesets.py</h1>
+<div class="grid" id="grid"></div>
+<!-- Mismo orden de carga que dev.html -->
+<script src="../js/core/util.js"></script>
+<script src="../js/data/tilesets.js"></script>
+<script src="../js/world/tiles.js"></script>
+<script src="../js/world/autotile.js"></script>
+<script src="../js/world/skins.js"></script>
+<script>
+  // Los scripts del juego piden los atlas relativos a la raíz: se redirigen desde tools/.
+  const NativeImage = window.Image;
+  window.Image = function () { const i = new NativeImage(); Object.defineProperty(i, 'src', { set(v) { i.setAttribute('src', '../' + v); } }); return i; };
+
+  const W = 24, Hh = 11;
+  // Mapa de muestra: suelo con una pared de 5×3, un tile de pared suelto, un estanque y manchas.
+  function at(tx, ty) {
+    if (tx >= 2 && tx < 7 && ty >= 2 && ty < 5) return 'wall';
+    if (tx === 10 && ty === 3) return 'wall';
+    if (tx >= 13 && tx < 19 && ty >= 3 && ty < 7 && !(tx === 13 && ty === 3) && !(tx === 18 && ty === 6)) return 'liquid';
+    if (tx === 20 && ty >= 1 && ty < 4) return 'liquid';
+    return 'floor';
+  }
+  const dirt = (gx, gy) => 0.5 + 0.5 * Math.sin(gx / 55) * Math.cos(gy / 45);
+
+  const grid = document.getElementById('grid');
+  for (const t of G.Tilesets) {
+    const idx = G.Tiles.SKIN0 + G.Tilesets.indexOf(t);
+    const box = document.createElement('div'); box.className = 'pack';
+    box.innerHTML = '<b>' + t.id + ' — ' + t.name + ' (' + t.liquid + ')</b>';
+    const cv = document.createElement('canvas'); cv.width = W * 32; cv.height = Hh * 32;
+    box.appendChild(cv); grid.appendChild(box);
+    G.Skins.load(t.id, () => {
+      const ctx = cv.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(G.Tiles.paintChunk(0, 0, W, at, dirt, idx, 1), 0, 0);
+      const rock = G.Tiles.propSprite(idx, 'rock');
+      if (rock && rock.px) ctx.drawImage(rock, 8 * 32, 7 * 32);
+    });
+  }
+</script></body></html>
